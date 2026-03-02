@@ -1,5 +1,5 @@
-import LogPage from './log/page'
+import DashboardPage from '@/components/dashboard-page'
 
 export default function HomePage() {
-    return <LogPage />
+    return <DashboardPage />
 }
