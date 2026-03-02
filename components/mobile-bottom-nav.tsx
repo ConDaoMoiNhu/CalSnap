@@ -17,47 +17,48 @@ export function MobileBottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 pt-2 rounded-t-[2rem] bg-slate-900/95 backdrop-blur-2xl border-t border-x border-white/10 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]" style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}>
-      <div className="flex items-stretch justify-around px-2 py-2 gap-0.5 max-w-lg mx-auto">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const isActive = pathname === href
-          const isCenter = href === '/scan'
+    <nav
+      className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-center items-end pb-3"
+      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+    >
+      <div className="relative max-w-xs w-full flex justify-center">
+        {/* Dark pill */}
+        <div className="w-full bg-slate-900/95 backdrop-blur-2xl rounded-full px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.6)] border border-white/10 flex items-center justify-between gap-1">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const isActive = pathname === href
+            const isCenter = href === '/scan'
 
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                'flex-1 flex flex-col items-center justify-center gap-1 py-2.5 px-2 rounded-xl text-xs font-semibold transition-all min-h-[52px] touch-target',
-                isCenter ? 'relative -mt-6' : ''
-              )}
-              aria-label={label}
-            >
-              <span
+            return (
+              <Link
+                key={href}
+                href={href}
+                aria-label={label}
                 className={cn(
-                  'flex items-center justify-center w-10 h-10 min-w-[40px] min-h-[40px] rounded-xl transition-all',
-                  isCenter
-                    ? 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/30'
-                    : isActive
-                      ? 'bg-emerald-500/25 text-emerald-400'
-                      : 'text-white/60'
+                  'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-white/60',
+                  isCenter && 'relative'
                 )}
               >
-                <Icon className="h-5 w-5" />
-              </span>
-              {!isCenter && (
                 <span
                   className={cn(
-                    'text-[10px] leading-tight',
-                    isActive ? 'text-emerald-400' : 'text-white/50'
+                    'flex items-center justify-center rounded-full transition-all',
+                    isCenter
+                      ? 'w-12 h-12 -mt-7 hoverboard-gradient text-white shadow-lg shadow-emerald-500/40'
+                      : 'w-8 h-8',
+                    !isCenter &&
+                      (isActive ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/60')
                   )}
                 >
-                  {label}
+                  <Icon className={cn('h-4 w-4', isCenter && 'h-5 w-5')} />
                 </span>
-              )}
-            </Link>
-          )
-        })}
+                {!isCenter && (
+                  <span className={cn(isActive ? 'text-emerald-400' : 'text-white/50')}>
+                    {label}
+                  </span>
+                )}
+              </Link>
+            )
+          })}
+        </div>
       </div>
     </nav>
   )

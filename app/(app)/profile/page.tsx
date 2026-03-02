@@ -97,6 +97,27 @@ export default function ProfilePage() {
         ))}
       </div>
 
+      {/* Personal info prompt if missing core fields */}
+      {(!profile?.height_cm || !profile?.age) && (
+        <div className="glass-card rounded-[2rem] p-5 border-2 border-dashed border-emerald-200 bg-emerald-50/40">
+          <h3 className="text-sm font-black text-slate-800 mb-1">Hoàn thiện hồ sơ 📝</h3>
+          <p className="text-xs text-slate-500 mb-3">
+            Thêm tuổi, chiều cao và giới tính để AI tạo plan chính xác hơn cho bạn.
+          </p>
+          <div className="flex flex-wrap gap-2 text-[11px] text-slate-500 mb-3">
+            <span className="px-2 py-1 rounded-full bg-white/70 font-semibold">Tuổi</span>
+            <span className="px-2 py-1 rounded-full bg-white/70 font-semibold">Giới tính</span>
+            <span className="px-2 py-1 rounded-full bg-white/70 font-semibold">Chiều cao</span>
+          </div>
+          <Link
+            href="/onboarding"
+            className="inline-flex items-center justify-center px-4 py-2.5 rounded-2xl hoverboard-gradient text-white text-xs font-bold"
+          >
+            Cập nhật ngay →
+          </Link>
+        </div>
+      )}
+
       {/* Journey */}
       {(journeyStreak > 0 || journeyScore > 0) && (
         <div className="glass-card rounded-[2rem] p-5">

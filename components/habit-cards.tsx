@@ -39,6 +39,9 @@ export function HabitCards({ date, initialHabits }: HabitCardsProps) {
 
   const waterGlasses = Math.round(waterMl / GLASS_ML)
   const stepsPercent = Math.min(100, (steps / STEPS_GOAL) * 100)
+  const rawStepCalories = steps * 0.04 // approx 0.04 kcal/step
+  const stepsCalories =
+    steps <= 0 ? 0 : Math.max(1, Math.round(rawStepCalories)) // không để ~0 khi đã có bước
   const waterPercent = Math.min(100, (waterGlasses / WATER_GLASSES) * 100)
   const exercisePercent = Math.min(100, (exerciseMinutes / 30) * 100)
 
@@ -130,7 +133,7 @@ export function HabitCards({ date, initialHabits }: HabitCardsProps) {
               </div>
             ) : (
               <p className="text-sm text-slate-600 mt-0.5">
-                {steps.toLocaleString()} / {STEPS_GOAL.toLocaleString()}
+                {steps.toLocaleString()} / {STEPS_GOAL.toLocaleString()} · ~{stepsCalories.toLocaleString()} kcal burned
               </p>
             )}
           </div>

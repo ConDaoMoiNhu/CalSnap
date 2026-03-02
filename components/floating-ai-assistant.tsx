@@ -3,6 +3,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { Sparkles, X, Minus, Send, Paperclip } from 'lucide-react'
+import { toast } from '@/components/toast'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -29,7 +30,15 @@ const toBase64 = (file: File): Promise<string> =>
 export function FloatingAIAssistant() {
   const [open, setOpen] = useState(false)
   const [minimized, setMinimized] = useState(false)
-  const [messages, setMessages] = useState<Message[]>([])
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window === 'undefined') return []
+    try {
+      const raw = window.localStorage.getItem('csnap_ai_chat')
+      return raw ? (JSON.parse(raw) as Message[]).slice(-40) : []
+    } catch {
+      return []
+    }
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [image, setImage] = useState<{ base64: string; preview: string } | null>(null)
@@ -38,6 +47,11 @@ export function FloatingAIAssistant() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    try {
+      window.localStorage.setItem('csnap_ai_chat', JSON.stringify(messages.slice(-40)))
+    } catch {
+      // ignore
+    }
   }, [messages])
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,20 +92,25 @@ export function FloatingAIAssistant() {
         const actionType = match[1]
         const actionData = JSON.parse(match[2])
 
-        await fetch('/api/assistant/action', {
+        const res = await fetch('/api/assistant/action', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ type: actionType, data: actionData }),
         })
+        const ok = res.ok
 
         if (actionType === 'LOG_MEAL') {
           cleanReply += `\n\n✅ Đã log: ${actionData.foodName} (${actionData.calories} kcal)`
+          if (ok) toast.success(`Đã thêm bữa ăn: ${actionData.foodName}`)
         } else if (actionType === 'UPDATE_MEAL') {
           cleanReply += `\n\n✏️ Đã cập nhật: ${actionData.foodName}`
+          if (ok) toast.success(`Đã cập nhật bữa ăn: ${actionData.foodName}`)
         } else if (actionType === 'DELETE_MEAL') {
           cleanReply += `\n\n🗑️ Đã xóa: ${actionData.foodName}`
+          if (ok) toast.success(`Đã xoá bữa ăn: ${actionData.foodName}`)
         } else if (actionType === 'UPDATE_GOAL') {
           cleanReply += `\n\n🎯 Đã cập nhật mục tiêu: ${actionData.daily_calorie_goal} kcal/ngày`
+          if (ok) toast.success(`Mục tiêu mới: ${actionData.daily_calorie_goal} kcal/ngày`)
         }
       }
 

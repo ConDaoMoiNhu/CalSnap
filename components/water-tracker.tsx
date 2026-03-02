@@ -36,9 +36,10 @@ export function WaterTracker({ currentMl: initial, goalMl }: WaterTrackerProps) 
         </span>
       </div>
 
+      {/* Animated progress bar */}
       <div className="h-3 bg-blue-100 rounded-full overflow-hidden mb-2">
         <div
-          className="h-full bg-blue-400 rounded-full transition-all duration-500"
+          className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-sky-400 rounded-full transition-all duration-700 ease-out"
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -46,6 +47,7 @@ export function WaterTracker({ currentMl: initial, goalMl }: WaterTrackerProps) 
         {cups} ly · {pct}% mục tiêu {pct >= 100 ? '🎉' : ''}
       </p>
 
+      {/* Droplet row */}
       <div className="flex gap-1 flex-wrap mb-4">
         {Array.from({ length: Math.round(goalMl / 250) }, (_, i) => (
           <Droplets
@@ -57,13 +59,14 @@ export function WaterTracker({ currentMl: initial, goalMl }: WaterTrackerProps) 
         ))}
       </div>
 
+      {/* Interactive quick-add buttons with playful animation */}
       <div className="flex gap-2">
-        {[150, 250, 350, 500].map((ml) => (
+        {[100, 200, 300, 500].map((ml) => (
           <button
             key={ml}
             onClick={() => handleAdd(ml)}
             disabled={loading}
-            className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-black hover:bg-blue-100 transition-colors disabled:opacity-50"
+            className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-black hover:bg-blue-100 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
           >
             +{ml}ml
           </button>

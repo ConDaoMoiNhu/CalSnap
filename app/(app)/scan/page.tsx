@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { saveMeal } from '@/app/actions/meals'
@@ -20,6 +20,14 @@ export default function ScanPage() {
     const [saving, setSaving] = useState(false)
     const [saved, setSaved] = useState(false)
 
+    // AI Portion Assistant
+    const [portionInput, setPortionInput] = useState('')
+    const [portionLoading, setPortionLoading] = useState(false)
+
+    // Image visibility timer
+    const [scanTime, setScanTime] = useState<Date | null>(null)
+    const [imageVisible, setImageVisible] = useState(true)
+
     // Editable fields
     const [editFoodName, setEditFoodName] = useState('')
     const [editCalories, setEditCalories] = useState(0)
@@ -38,6 +46,8 @@ export default function ScanPage() {
             setState('preview')
             setSaved(false)
             setResult(null)
+            setScanTime(null)
+            setImageVisible(true)
         }
         reader.readAsDataURL(file)
     }, [])
@@ -132,14 +142,83 @@ export default function ScanPage() {
         setResult(null)
         setErrorMsg(null)
         setSaved(false)
+        setScanTime(null)
+        setImageVisible(true)
         if (cameraInputRef.current) cameraInputRef.current.value = ''
         if (galleryInputRef.current) galleryInputRef.current.value = ''
+    }
+
+    // Ẩn ảnh sau 5 phút kể từ khi có kết quả
+    useEffect(() => {
+        if (!result) return
+        setScanTime((prev) => prev ?? new Date())
+        const timer = setTimeout(() => {
+            setImageVisible(false)
+        }, 5 * 60 * 1000)
+        return () => clearTimeout(timer)
+    }, [result])
+
+    const adjustPortion = async (adjustment: string) => {
+        if (!result || !adjustment.trim()) return
+        setPortionLoading(true)
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: `Món ăn hiện tại: "${editFoodName || result.foodName}" có ${editCalories || result.calories} kcal, protein ${editProtein || result.protein}g, carbs ${editCarbs || result.carbs}g, fat ${editFat || result.fat}g.
+
+Người dùng muốn thêm/điều chỉnh: "${adjustment}"
+
+Hãy tính lại tổng dinh dưỡng sau khi thêm "${adjustment}" vào món trên.
+Trả về JSON duy nhất (không giải thích):
+{"foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number}`,
+                    history: [],
+                }),
+            })
+            const data = await res.json()
+            const jsonMatch = data.reply?.match(/\{[\s\S]*?\}/)
+            if (jsonMatch) {
+                const updated = JSON.parse(jsonMatch[0])
+                if (updated.foodName) {
+                    setEditFoodName(updated.foodName)
+                    setResult((prev) => prev ? { ...prev, foodName: updated.foodName } : prev)
+                }
+                if (typeof updated.calories === 'number') {
+                    setEditCalories(updated.calories)
+                    setResult((prev) => prev ? { ...prev, calories: updated.calories } : prev)
+                }
+                if (typeof updated.protein === 'number') {
+                    setEditProtein(updated.protein)
+                    setResult((prev) => prev ? { ...prev, protein: updated.protein } : prev)
+                }
+                if (typeof updated.carbs === 'number') {
+                    setEditCarbs(updated.carbs)
+                    setResult((prev) => prev ? { ...prev, carbs: updated.carbs } : prev)
+                }
+                if (typeof updated.fat === 'number') {
+                    setEditFat(updated.fat)
+                    setResult((prev) => prev ? { ...prev, fat: updated.fat } : prev)
+                }
+            }
+        } catch (e) {
+            console.error('Adjust portion error:', e)
+        } finally {
+            setPortionLoading(false)
+            setPortionInput('')
+        }
     }
 
     const confidenceColor = {
         high: 'bg-emerald-100 text-emerald-600 border-emerald-200',
         medium: 'bg-amber-100 text-amber-600 border-amber-200',
         low: 'bg-red-100 text-red-600 border-red-200',
+    } as const
+
+    const confidenceLabel: Record<NutritionResult['confidence'], string> = {
+        high: 'Độ tin cậy cao',
+        medium: 'Độ tin cậy trung bình',
+        low: 'Độ tin cậy thấp',
     }
 
     return (
@@ -150,10 +229,31 @@ export default function ScanPage() {
             </div>
 
             {/* Image Upload / Preview */}
-            <div className="glass-card rounded-[2rem] overflow-hidden border border-white/40">
-                {!imageData ? (
+            <div className="glass-card rounded-[2rem] overflow-hidden border border-white/40 p-4 space-y-4">
+                {imageData && imageVisible && (
+                    <div className="relative rounded-[1.75rem] overflow-hidden">
+                        <div className="relative h-64 w-full">
+                            <Image src={imageData} alt="Food preview" fill className="object-cover" unoptimized />
+                            {state === 'analyzing' && (
+                                <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center">
+                                    <div className="text-center space-y-3 text-white">
+                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-400" />
+                                        <p className="text-sm font-medium">Analyzing with AI...</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <Button variant="ghost" size="icon"
+                            className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm hover:bg-white rounded-full touch-target flex items-center justify-center"
+                            onClick={reset} aria-label="Remove image">
+                            <RotateCcw className="h-4 w-4 text-slate-600" />
+                        </Button>
+                    </div>
+                )}
+
+                {!imageData && (
                     <div
-                        className="flex flex-col items-center justify-center min-h-[200px] h-64 gap-4 p-6 rounded-[2rem] border-2 border-dashed border-slate-200 m-2"
+                        className="flex flex-col items-center justify-center min-h-[180px] gap-4 rounded-[1.75rem] border-2 border-dashed border-slate-200"
                         onDrop={handleDrop}
                         onDragOver={(e) => e.preventDefault()}
                     >
@@ -164,50 +264,46 @@ export default function ScanPage() {
                             <p className="font-semibold text-slate-800">Chụp ảnh hoặc chọn từ thư viện</p>
                             <p className="text-sm text-slate-500 mt-1">JPG, PNG, WEBP</p>
                         </div>
-                        <div className="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
-                            <button
-                                type="button"
-                                onClick={() => cameraInputRef.current?.click()}
-                                className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl hoverboard-gradient text-white font-semibold text-sm min-h-[44px] touch-target transition-all active:scale-95"
-                            >
-                                <Camera className="h-5 w-5" />
-                                Chụp ảnh
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => galleryInputRef.current?.click()}
-                                className="flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-slate-100 text-slate-700 font-semibold text-sm min-h-[44px] touch-target hover:bg-slate-200 transition-all active:scale-95"
-                            >
-                                <ImageIcon className="h-5 w-5" />
-                                Thư viện ảnh
-                            </button>
-                        </div>
                         <p className="text-xs text-slate-400">hoặc thả ảnh vào đây</p>
-                        <input ref={cameraInputRef} type="file" accept="image/*" capture="environment"
-                            className="hidden" onChange={handleFileInput} aria-label="Chụp ảnh món ăn" />
-                        <input ref={galleryInputRef} type="file" accept="image/*"
-                            className="hidden" onChange={handleFileInput} aria-label="Chọn ảnh từ thư viện" />
-                    </div>
-                ) : (
-                    <div className="relative p-2">
-                        <div className="relative h-64 w-full rounded-2xl overflow-hidden">
-                            <Image src={imageData} alt="Food preview" fill className="object-cover" unoptimized />
-                            {state === 'analyzing' && (
-                                <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center rounded-2xl">
-                                    <div className="text-center space-y-3 text-white">
-                                        <Loader2 className="h-8 w-8 animate-spin mx-auto text-emerald-400" />
-                                        <p className="text-sm font-medium">Analyzing with AI...</p>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <Button variant="ghost" size="icon"
-                            className="absolute top-4 right-4 min-w-[44px] min-h-[44px] bg-white/90 backdrop-blur-sm hover:bg-white rounded-xl touch-target flex items-center justify-center"
-                            onClick={reset} aria-label="Remove image">
-                            <RotateCcw className="h-4 w-4 text-slate-600" />
-                        </Button>
                     </div>
                 )}
+
+                {/* Nút camera + gallery luôn hiển thị */}
+                <div className="flex flex-col sm:flex-row gap-3 w-full">
+                    <label
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl font-semibold text-sm min-h-[44px] touch-target cursor-pointer transition-colors ${
+                            result ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' : 'hoverboard-gradient text-white'
+                        }`}
+                    >
+                        <Camera className="h-5 w-5" />
+                        {result ? 'Chụp lại' : 'Chụp ảnh'}
+                        <input
+                            ref={cameraInputRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleFileInput}
+                            aria-label="Chụp ảnh món ăn"
+                        />
+                    </label>
+                    <label
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl font-semibold text-sm min-h-[44px] touch-target cursor-pointer transition-colors ${
+                            result ? 'bg-slate-900 text-white hover:bg-slate-800' : 'bg-slate-900 text-white hover:bg-slate-800'
+                        }`}
+                    >
+                        <ImageIcon className="h-5 w-5" />
+                        Thư viện
+                        <input
+                            ref={galleryInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleFileInput}
+                            aria-label="Chọn ảnh từ thư viện"
+                        />
+                    </label>
+                </div>
             </div>
 
             {state === 'preview' && (
@@ -238,7 +334,7 @@ export default function ScanPage() {
                     {/* Confidence badge */}
                     <div className="flex justify-end mb-3">
                         <Badge variant="outline" className={confidenceColor[result.confidence]}>
-                            {result.confidence} confidence
+                            {confidenceLabel[result.confidence]}
                         </Badge>
                     </div>
 
@@ -255,40 +351,95 @@ export default function ScanPage() {
                     </div>
 
                     {/* EDITABLE calories */}
-                    <div className="flex items-center gap-2 mb-5 p-3 bg-slate-50 rounded-2xl">
+                    <div className="flex items-baseline gap-2 mb-5 p-3 bg-slate-50 rounded-2xl">
                         <Flame className="h-5 w-5 text-emerald-500 shrink-0" />
                         <input
                             type="number"
                             value={editCalories}
                             onChange={(e) => setEditCalories(Number(e.target.value))}
                             min={0}
-                            className="text-2xl font-black text-slate-800 bg-transparent outline-none w-24"
+                            className="text-4xl font-black text-slate-800 bg-transparent outline-none w-28"
                         />
-                        <span className="text-base font-normal text-slate-500">kcal</span>
+                        <span className="text-lg font-semibold text-slate-400">kcal</span>
                     </div>
 
-                    {/* EDITABLE macros */}
+                    {/* EDITABLE macros – cards với "g" cùng hàng */}
                     <div className="grid grid-cols-3 gap-3 mb-5">
-                        <EditableMacro
-                            icon={Beef} label="Protein" value={editProtein}
-                            onChange={setEditProtein} color="text-blue-500" bg="bg-blue-100"
-                        />
-                        <EditableMacro
-                            icon={Wheat} label="Carbs" value={editCarbs}
-                            onChange={setEditCarbs} color="text-amber-600" bg="bg-amber-100"
-                        />
-                        <EditableMacro
-                            icon={Droplets} label="Fat" value={editFat}
-                            onChange={setEditFat} color="text-orange-500" bg="bg-orange-100"
-                        />
+                        {[
+                            { label: 'Protein', value: editProtein, setter: setEditProtein, icon: Beef, color: 'text-blue-500' },
+                            { label: 'Carbs', value: editCarbs, setter: setEditCarbs, icon: Wheat, color: 'text-amber-500' },
+                            { label: 'Fat', value: editFat, setter: setEditFat, icon: Droplets, color: 'text-orange-500' },
+                        ].map(({ label, value, setter, icon: Icon, color }) => (
+                            <div key={label} className="glass-card rounded-2xl p-4 flex flex-col items-center">
+                                <div className="w-8 h-8 rounded-2xl bg-slate-50 flex items-center justify-center mb-1">
+                                    <Icon className={`h-4 w-4 ${color}`} />
+                                </div>
+                                <div className="flex items-baseline gap-0.5">
+                                    <input
+                                        type="number"
+                                        value={value}
+                                        onChange={(e) => setter(Math.max(0, Number(e.target.value)))}
+                                        className={`w-14 text-center text-xl font-black ${color} bg-transparent focus:outline-none`}
+                                    />
+                                    <span className="text-xs font-semibold text-slate-400">g</span>
+                                </div>
+                                <p className="text-[10px] text-slate-400 mt-0.5">{label}</p>
+                            </div>
+                        ))}
                     </div>
 
                     {/* AI disclaimer nếu confidence thấp */}
                     {result.confidence === 'low' && (
                         <p className="text-xs text-amber-600 bg-amber-50 rounded-xl px-3 py-2 mb-4">
-                            ⚠️ AI khong chac chan ve mon an nay. Vui long kiem tra va chinh sua thong tin truoc khi luu.
+                            ⚠️ AI không thật sự chắc chắn về món ăn này. Bạn hãy kiểm tra lại và chỉnh sửa thông tin trước khi lưu nhé.
                         </p>
                     )}
+
+                    {/* AI Portion Assistant */}
+                    <div className="mt-4 rounded-2xl bg-slate-50 p-3 space-y-3">
+                        <div className="flex gap-2">
+                            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 text-sm shrink-0">
+                                🤖
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-slate-700">
+                                    Tôi thấy bạn vừa scan {result.foodName} 🍽️
+                                </p>
+                                <p className="text-[11px] text-slate-400">
+                                    Muốn điều chỉnh khẩu phần không?
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {['Thêm 1 ly sữa đậu nành', 'Tô lớn hơn', 'Ít cơm hơn'].map((s) => (
+                                <button
+                                    key={s}
+                                    type="button"
+                                    onClick={() => adjustPortion(s)}
+                                    disabled={portionLoading}
+                                    className="px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold border border-emerald-200 disabled:opacity-60"
+                                >
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                value={portionInput}
+                                onChange={(e) => setPortionInput(e.target.value)}
+                                placeholder="Nhập thêm món... (vd: thêm trứng)"
+                                className="flex-1 bg-slate-50 rounded-2xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-400/30 border border-slate-200"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => adjustPortion(portionInput)}
+                                disabled={portionLoading || !portionInput.trim()}
+                                className="w-9 h-9 rounded-xl hoverboard-gradient flex items-center justify-center text-white text-xs font-bold disabled:opacity-60"
+                            >
+                                {portionLoading ? '...' : 'OK'}
+                            </button>
+                        </div>
+                    </div>
 
                     {!saved ? (
                         <Button className="w-full gap-2 hoverboard-gradient text-white font-bold rounded-2xl py-3.5"

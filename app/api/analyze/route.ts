@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const SYSTEM_PROMPT = `You are a nutrition expert. Analyze the food in this image and return ONLY a JSON object with this structure: { "foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": "high" | "medium" | "low" }. If no food is detected, return { "error": "No food detected" }. Do not include any extra text, explanation, or markdown — only the raw JSON object.`
+const IMAGE_PROMPT = `You are a nutrition expert. Analyze the food in this image and return ONLY a JSON object with this structure: { "foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": "high" | "medium" | "low" }. If no food is detected, return { "error": "No food detected" }. Do not include any extra text, explanation, or markdown — only the raw JSON object.`
+
+const TEXT_PROMPT_PREFIX = `You are a nutrition expert. The user will give you the description of a meal or adjustment of portion (for example "Bánh xèo thêm 1 ly sữa đậu nành", "tô phở lớn hơn", "ít cơm hơn"). Based on that description, estimate a NEW nutrition breakdown for the ENTIRE meal and return ONLY a JSON object with this structure: { "foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": "high" | "medium" | "low" }. Do not include any explanation or markdown — only the raw JSON object.
+
+User description: `
 
 export async function POST(req: NextRequest) {
     const apiKey = process.env.GOOGLE_AI_API_KEY
@@ -15,6 +19,47 @@ export async function POST(req: NextRequest) {
 
     try {
         const body = await req.json()
+
+        // Text-only adjustment mode (used by AI Portion Assistant)
+        if (body.textOnly && typeof body.foodNameHint === 'string') {
+            const genAI = new GoogleGenerativeAI(apiKey)
+            const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
+
+            const result = await model.generateContent([
+                TEXT_PROMPT_PREFIX + body.foodNameHint,
+            ])
+
+            const content = result.response.text()
+            console.log('[/api/analyze:textOnly] Gemini response:', content)
+
+            const jsonMatch = content?.match(/\{[\s\S]*\}/)
+            if (!jsonMatch) {
+                return NextResponse.json({ error: 'AI tra ve dinh dang khong hop le. Thu lai.' }, { status: 500 })
+            }
+
+            const parsed = JSON.parse(jsonMatch[0])
+            if (parsed.error) {
+                return NextResponse.json({ error: parsed.error })
+            }
+
+            const { foodName, calories, protein, carbs, fat, confidence } = parsed
+            if (typeof foodName !== 'string') {
+                return NextResponse.json({ error: 'AI khong the tinh du thong tin dinh duong.' }, { status: 500 })
+            }
+
+            return NextResponse.json({
+                result: {
+                    foodName,
+                    calories: Math.round(Number(calories) || 0),
+                    protein: Math.round((Number(protein) || 0) * 10) / 10,
+                    carbs: Math.round((Number(carbs) || 0) * 10) / 10,
+                    fat: Math.round((Number(fat) || 0) * 10) / 10,
+                    confidence: confidence ?? 'medium',
+                },
+            })
+        }
+
+        // Default: image mode
         const { image } = body
 
         if (!image || typeof image !== 'string') {
@@ -48,7 +93,7 @@ export async function POST(req: NextRequest) {
                     data: base64Data,
                 },
             },
-            SYSTEM_PROMPT,
+            IMAGE_PROMPT,
         ])
 
         const content = result.response.text()
