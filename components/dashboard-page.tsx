@@ -22,13 +22,6 @@ interface MealSummary {
   fat: number
 }
 
-interface HabitsData {
-  steps: number
-  water_ml: number
-  exercise_minutes: number
-  exercise_calories: number
-}
-
 export default function DashboardPage() {
   const [profile, setProfile] = useState<DbProfile | null>(null)
   const [totals, setTotals] = useState<MealSummary | null>(null)
@@ -38,7 +31,12 @@ export default function DashboardPage() {
   const [recentMeals, setRecentMeals] = useState<any[]>([])
   const [weeklyCalories, setWeeklyCalories] = useState<{ date: string; calories: number }[]>([])
   const [loadingWeekly, setLoadingWeekly] = useState(true)
-  const [habits, setHabits] = useState<HabitsData | null>(null)
+  const [habits, setHabits] = useState<{
+    steps: number
+    water_ml: number
+    exercise_minutes: number
+    exercise_calories: number
+  } | null>(null)
   const [exerciseCalories, setExerciseCalories] = useState(0)
 
   const loadHabits = useCallback(async (targetDate: string) => {
@@ -51,7 +49,7 @@ export default function DashboardPage() {
       .eq('user_id', user.id)
       .eq('date', targetDate)
       .maybeSingle()
-    const h = (habitsRow as HabitsData | null) ?? null
+    const h = (habitsRow as any) ?? null
     setHabits(h)
     setExerciseCalories(h?.exercise_calories ?? 0)
   }, [])
@@ -91,6 +89,7 @@ export default function DashboardPage() {
 
       await loadHabits(date)
 
+      // Load "log lại gần đây" (một lần)
       if (recentMeals.length === 0) {
         try {
           const data = await getMealsForDate('recent')
@@ -124,6 +123,11 @@ export default function DashboardPage() {
   const remaining = calorieGoal - calories
   const pct = calorieGoal > 0 ? Math.min(100, Math.round((calories / calorieGoal) * 100)) : 0
 
+  const estimatedBurnPerSession = Math.round(
+    (plan?.workout_duration_minutes ?? 45) * 7 * (profile?.weight_kg ?? 70) / 60
+  )
+
+  // 7 ngày của tuần hiện tại (bắt đầu từ Chủ nhật)
   const today = new Date()
   const weekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
   const startOfWeek = new Date(today)
@@ -146,17 +150,15 @@ export default function DashboardPage() {
     year: 'numeric',
   })
   const firstName =
-    profile?.full_name?.trim()?.split(' ')?.[0] ?? 'bạn'
+    profile?.full_name?.trim()?.split(' ')?.[0] ??
+    'bạn'
 
+  // Ring chart values
   const ringSize = 220
   const ringStroke = 18
   const r = (ringSize - ringStroke * 2) / 2
   const circ = 2 * Math.PI * r
   const dash = (pct / 100) * circ
-
-  const weightKg = profile?.weight_kg ?? 70
-  const workoutDuration = plan?.workout_duration_minutes ?? 45
-  const estimatedBurnPerSession = Math.round(workoutDuration * 7 * weightKg / 60)
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto page-enter pb-24">
@@ -240,15 +242,13 @@ export default function DashboardPage() {
             <div className="text-center">
               <div className="text-lg">🔥</div>
               <div className="text-white font-display font-extrabold text-lg tabular-nums">
-                {exerciseCalories > 0
-                  ? `${exerciseCalories.toLocaleString()}/${estimatedBurnPerSession.toLocaleString()}`
-                  : `0/${estimatedBurnPerSession.toLocaleString()}`}
+                {exerciseCalories.toLocaleString()}/{estimatedBurnPerSession.toLocaleString()}
               </div>
               <div className="text-white/65 text-[10px] font-semibold tracking-wide">Đã đốt</div>
             </div>
           </div>
 
-          {/* Date strip */}
+          {/* Date strip (keep existing date set logic) */}
           <div className="mt-5 flex gap-2">
             <div className="w-full bg-white/15 rounded-2xl p-2 flex gap-1">
               {headerDays.map((d, idx) => {
@@ -312,10 +312,12 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <HabitCards          
+          <HabitCards
             date={date}
             initialHabits={habits}
-            onUpdate={async () => await loadHabits(date)}
+            onUpdate={(newCal) => {
+              if (newCal !== undefined) setExerciseCalories(newCal)
+            }}
           />
           <MonthlySummaryCard />
         </div>
@@ -399,6 +401,8 @@ export default function DashboardPage() {
                   return
                 }
                 toast.success(`Đã log lại: ${meal.food_name} (${meal.calories} kcal)`)
+
+                // Nếu đang xem hôm nay thì refresh totals ngay để dashboard "sống"
                 if (date === todayStr) {
                   const supabase = createClient()
                   const { data: { user } } = await supabase.auth.getUser()
@@ -437,15 +441,18 @@ export default function DashboardPage() {
       {/* Habits + weekly + weight + monthly */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,2.1fr)_minmax(0,2.1fr)]">
         <div className="space-y-4">
-          <HabitCards            
+          <HabitCards
             date={date}
             initialHabits={habits}
-            onUpdate={async () => await loadHabits(date)}
+            onUpdate={(newCal) => {
+              if (newCal !== undefined) setExerciseCalories(newCal)
+            }}
           />
           <MonthlySummaryCard />
         </div>
 
         <div className="space-y-4">
+          {/* Lấp khoảng trống: biểu đồ + log lại nhanh */}
           <div className="glass-card rounded-[2rem] p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -476,6 +483,7 @@ export default function DashboardPage() {
                   return
                 }
                 toast.success(`Đã log lại: ${meal.food_name} (${meal.calories} kcal)`)
+
                 if (date === todayStr) {
                   const supabase = createClient()
                   const { data: { user } } = await supabase.auth.getUser()
@@ -499,6 +507,7 @@ export default function DashboardPage() {
             />
           </div>
 
+          {/* Báo cáo tuần & cân nặng */}
           <WeeklyReport data={null} />
           {profile?.weight_kg && profile?.target_weight_kg && (
             <WeightCheckin
