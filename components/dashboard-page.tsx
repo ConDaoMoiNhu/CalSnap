@@ -1,7 +1,7 @@
 // components/dashboard-page.tsx
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { HabitCards } from '@/components/habit-cards'
@@ -39,29 +39,13 @@ export default function DashboardPage() {
   } | null>(null)
   const [exerciseCalories, setExerciseCalories] = useState(0)
 
-  const loadHabits = useCallback(async (targetDate: string) => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const { data: habitsRow } = await supabase
-      .from('daily_habits')
-      .select('steps, water_ml, exercise_minutes, exercise_calories')
-      .eq('user_id', user.id)
-      .eq('date', targetDate)
-      .maybeSingle()
-    const h = (habitsRow as any) ?? null
-    setHabits(h)
-    // Luôn set exerciseCalories từ DB khi load — fix mất data khi F5
-    setExerciseCalories(h?.exercise_calories ?? 0)
-  }, [])
-
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [{ data: prof }, { data: meals }] =
+      const [{ data: prof }, { data: meals }, { data: habitsRow }] =
         await Promise.all([
           supabase.from('profiles').select('*').eq('id', user.id).single(),
           supabase
@@ -69,6 +53,12 @@ export default function DashboardPage() {
             .select('calories, protein, carbs, fat')
             .eq('user_id', user.id)
             .eq('logged_at', date),
+          supabase
+            .from('daily_habits')
+            .select('steps, water_ml, exercise_minutes, exercise_calories')
+            .eq('user_id', user.id)
+            .eq('date', date)
+            .maybeSingle(),
         ])
 
       if (prof) setProfile(prof as DbProfile)
@@ -88,7 +78,10 @@ export default function DashboardPage() {
         setTotals({ calories: 0, protein: 0, carbs: 0, fat: 0 })
       }
 
-      await loadHabits(date)
+      // Set habits và exerciseCalories cùng lúc từ cùng 1 query
+      const h = (habitsRow as any) ?? null
+      setHabits(h)
+      setExerciseCalories(h?.exercise_calories ?? 0)
 
       if (recentMeals.length === 0) {
         try {
@@ -127,7 +120,6 @@ export default function DashboardPage() {
     (plan?.workout_duration_minutes ?? 45) * 7 * (profile?.weight_kg ?? 70) / 60
   )
 
-  // 7 ngày của tuần hiện tại (bắt đầu từ Chủ nhật)
   const today = new Date()
   const weekdayLabels = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
   const startOfWeek = new Date(today)
@@ -149,10 +141,8 @@ export default function DashboardPage() {
     month: 'long',
     year: 'numeric',
   })
-  const firstName =
-    profile?.full_name?.trim()?.split(' ')?.[0] ?? 'bạn'
+  const firstName = profile?.full_name?.trim()?.split(' ')?.[0] ?? 'bạn'
 
-  // Ring chart — đỏ + xoay hết khi vượt goal
   const ringSize = 220
   const ringStroke = 18
   const r = (ringSize - ringStroke * 2) / 2
@@ -302,9 +292,7 @@ export default function DashboardPage() {
 
       {/* Content grid below header */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,3fr)_minmax(0,2.2fr)]">
-        {/* Left: macros + habits */}
         <div className="space-y-4">
-          {/* Macros summary */}
           <div className="glass-card rounded-[2rem] p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -331,9 +319,7 @@ export default function DashboardPage() {
           <MonthlySummaryCard />
         </div>
 
-        {/* Right: AI tools + charts + relog */}
         <div className="space-y-4">
-          {/* AI logging */}
           <div className="glass-card rounded-[2rem] p-5 flex flex-col gap-3">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Trợ lý AI
@@ -359,7 +345,6 @@ export default function DashboardPage() {
             >
               Mở AI Assistant
             </Link>
-
             <div className="mt-3 grid grid-cols-3 gap-2">
               {[
                 { label: 'Chat', icon: '💬', href: '/chat' },
@@ -378,7 +363,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Weekly chart */}
           <div className="glass-card rounded-[2rem] p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -399,7 +383,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Quick relog */}
           <div className="glass-card rounded-[2rem] p-5">
             <QuickRelog
               recentMeals={recentMeals}
@@ -433,7 +416,6 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Weekly report + weight */}
           <WeeklyReport data={null} />
           {profile?.weight_kg && profile?.target_weight_kg && (
             <WeightCheckin
@@ -459,7 +441,6 @@ export default function DashboardPage() {
         </div>
 
         <div className="space-y-4">
-          {/* Lấp khoảng trống: biểu đồ + log lại nhanh */}
           <div className="glass-card rounded-[2rem] p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -513,7 +494,6 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Báo cáo tuần & cân nặng */}
           <WeeklyReport data={null} />
           {profile?.weight_kg && profile?.target_weight_kg && (
             <WeightCheckin
