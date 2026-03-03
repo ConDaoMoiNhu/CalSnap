@@ -8,7 +8,7 @@ import { HabitCards } from '@/components/habit-cards'
 import { WeeklyReport } from '@/components/weekly-report'
 import { WeightCheckin } from '@/components/weight-checkin'
 import { MacroPill } from '@/components/macro-pill'
-import type { Profile as DbProfile } from '@/lib/types'
+import type { Profile as DbProfile, FitnessPlan } from '@/lib/types'
 import { WeeklyChart } from '@/components/weekly-chart'
 import { QuickRelog } from '@/components/quick-relog'
 import { getMealsForDate, getWeeklyCalories, relogMeal } from '@/app/actions/meals'
@@ -78,7 +78,6 @@ export default function DashboardPage() {
         setTotals({ calories: 0, protein: 0, carbs: 0, fat: 0 })
       }
 
-      // Set habits và exerciseCalories cùng lúc từ cùng 1 query
       const h = (habitsRow as any) ?? null
       setHabits(h)
       setExerciseCalories(h?.exercise_calories ?? 0)
@@ -110,7 +109,7 @@ export default function DashboardPage() {
     loadWeekly()
   }, [])
 
-  const plan = profile?.fitness_plan as any
+  const plan = profile?.fitness_plan as FitnessPlan | null
   const calorieGoal = plan?.daily_calories ?? profile?.daily_calorie_goal ?? 2000
   const calories = totals?.calories ?? 0
   const remaining = calorieGoal - calories
