@@ -224,5 +224,5 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .nutri-header-danger {
-  background: linear-gradient(145deg, #b71c1c 0%, #c62828 60%, #e53935 100%);
+  background: linear-gradient(145deg, #d4856a 0%, #e8967a 50%, #f2b09a 100%);
 }
