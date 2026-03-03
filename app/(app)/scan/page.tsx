@@ -8,9 +8,11 @@ import { Camera, ImageIcon, Loader2, Flame, Beef, Wheat, Droplets, CheckCircle, 
 import { toast } from '@/components/toast'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { NutritionResult } from '@/lib/types'
+import { NutritionResult, AnalyzeResponse } from '@/lib/types'
 
 type State = 'idle' | 'preview' | 'analyzing' | 'result' | 'error'
+
+const LOCAL_SCAN_KEY = 'calsnap_last_scan_v1'
 
 export default function ScanPage() {
     const [state, setState] = useState<State>('idle')
@@ -158,51 +160,97 @@ export default function ScanPage() {
         return () => clearTimeout(timer)
     }, [result])
 
+    // Lưu kết quả scan cuối cùng vào localStorage để tránh phải gọi lại AI
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        if (!result) {
+            window.localStorage.removeItem(LOCAL_SCAN_KEY)
+            return
+        }
+        const payload = {
+            result,
+            editFoodName,
+            editCalories,
+            editProtein,
+            editCarbs,
+            editFat,
+            savedAt: new Date().toISOString(),
+        }
+        try {
+            window.localStorage.setItem(LOCAL_SCAN_KEY, JSON.stringify(payload))
+        } catch {
+            // ignore
+        }
+    }, [result, editFoodName, editCalories, editProtein, editCarbs, editFat])
+
+    // Khôi phục kết quả scan gần nhất khi mở lại trang
+    useEffect(() => {
+        if (typeof window === 'undefined') return
+        try {
+            const raw = window.localStorage.getItem(LOCAL_SCAN_KEY)
+            if (!raw) return
+            const data = JSON.parse(raw) as {
+                result: NutritionResult
+                editFoodName: string
+                editCalories: number
+                editProtein: number
+                editCarbs: number
+                editFat: number
+                savedAt: string
+            }
+            // Giới hạn thời gian giữ, ví dụ 24h
+            const savedAt = new Date(data.savedAt)
+            const diffHours = (Date.now() - savedAt.getTime()) / (1000 * 60 * 60)
+            if (diffHours > 24) {
+                window.localStorage.removeItem(LOCAL_SCAN_KEY)
+                return
+            }
+            setResult(data.result)
+            setEditFoodName(data.editFoodName)
+            setEditCalories(data.editCalories)
+            setEditProtein(data.editProtein)
+            setEditCarbs(data.editCarbs)
+            setEditFat(data.editFat)
+            setState('result')
+            setImageVisible(false)
+        } catch {
+            // ignore
+        }
+    }, [])
+
     const adjustPortion = async (adjustment: string) => {
         if (!result || !adjustment.trim()) return
         setPortionLoading(true)
         try {
-            const res = await fetch('/api/chat', {
+            const description = `Bữa ăn hiện tại: "${editFoodName || result.foodName}" với ${editCalories || result.calories} kcal, protein ${editProtein || result.protein}g, carbs ${editCarbs || result.carbs}g, fat ${editFat || result.fat}g.
+Người dùng muốn điều chỉnh/thêm: "${adjustment}". Hãy tính lại toàn bộ dinh dưỡng cho bữa ăn sau khi điều chỉnh.`
+
+            const res = await fetch('/api/analyze', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    message: `Món ăn hiện tại: "${editFoodName || result.foodName}" có ${editCalories || result.calories} kcal, protein ${editProtein || result.protein}g, carbs ${editCarbs || result.carbs}g, fat ${editFat || result.fat}g.
-
-Người dùng muốn thêm/điều chỉnh: "${adjustment}"
-
-Hãy tính lại tổng dinh dưỡng sau khi thêm "${adjustment}" vào món trên.
-Trả về JSON duy nhất (không giải thích):
-{"foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number}`,
-                    history: [],
+                    textOnly: true,
+                    foodNameHint: description,
                 }),
             })
-            const data = await res.json()
-            const jsonMatch = data.reply?.match(/\{[\s\S]*?\}/)
-            if (jsonMatch) {
-                const updated = JSON.parse(jsonMatch[0])
-                if (updated.foodName) {
-                    setEditFoodName(updated.foodName)
-                    setResult((prev) => prev ? { ...prev, foodName: updated.foodName } : prev)
-                }
-                if (typeof updated.calories === 'number') {
-                    setEditCalories(updated.calories)
-                    setResult((prev) => prev ? { ...prev, calories: updated.calories } : prev)
-                }
-                if (typeof updated.protein === 'number') {
-                    setEditProtein(updated.protein)
-                    setResult((prev) => prev ? { ...prev, protein: updated.protein } : prev)
-                }
-                if (typeof updated.carbs === 'number') {
-                    setEditCarbs(updated.carbs)
-                    setResult((prev) => prev ? { ...prev, carbs: updated.carbs } : prev)
-                }
-                if (typeof updated.fat === 'number') {
-                    setEditFat(updated.fat)
-                    setResult((prev) => prev ? { ...prev, fat: updated.fat } : prev)
-                }
+
+            const data: AnalyzeResponse = await res.json()
+            if (data.error || !data.result) {
+                console.error('Adjust portion API error:', data.error)
+                toast.error(data.error ?? 'AI không thể tính lại khẩu phần, thử lại sau.')
+                return
             }
+
+            const updated = data.result
+            setResult(updated)
+            setEditFoodName(updated.foodName)
+            setEditCalories(updated.calories)
+            setEditProtein(updated.protein)
+            setEditCarbs(updated.carbs)
+            setEditFat(updated.fat)
         } catch (e) {
             console.error('Adjust portion error:', e)
+            toast.error('Không gọi được AI để tính lại khẩu phần.')
         } finally {
             setPortionLoading(false)
             setPortionInput('')
@@ -224,8 +272,10 @@ Trả về JSON duy nhất (không giải thích):
     return (
         <div className="space-y-6 max-w-lg mx-auto min-w-0 overflow-x-hidden">
             <div>
-                <h1 className="text-2xl font-bold text-slate-800">Scan Food</h1>
-                <p className="text-slate-500 text-sm mt-0.5">Upload a photo to get instant nutrition analysis</p>
+                <h1 className="text-2xl font-bold text-slate-800">Scan món ăn</h1>
+                <p className="text-slate-500 text-sm mt-0.5">
+                    Chụp hoặc chọn ảnh món ăn để AI ước tính calo và dinh dưỡng (tiếng Việt).
+                </p>
             </div>
 
             {/* Image Upload / Preview */}
@@ -310,7 +360,7 @@ Trả về JSON duy nhất (không giải thích):
                 <Button className="w-full gap-2 hoverboard-gradient text-white font-bold rounded-2xl py-4 min-h-[44px] shadow-lg shadow-emerald-500/25 touch-target"
                     size="lg" onClick={analyze}>
                     <Camera className="h-5 w-5" />
-                    Analyze with AI
+                    Phân tích với AI
                 </Button>
             )}
 

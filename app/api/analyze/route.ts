@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 
-const IMAGE_PROMPT = `You are a nutrition expert. Analyze the food in this image and return ONLY a JSON object with this structure: { "foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": "high" | "medium" | "low" }. If no food is detected, return { "error": "No food detected" }. Do not include any extra text, explanation, or markdown — only the raw JSON object.`
+const IMAGE_PROMPT = `Bạn là chuyên gia dinh dưỡng, trả lời bằng tiếng Việt.
+Phân tích món ăn trong bức ảnh và TRẢ VỀ DUY NHẤT một JSON với cấu trúc:
+{ "foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": "high" | "medium" | "low" }.
 
-const TEXT_PROMPT_PREFIX = `You are a nutrition expert. The user will give you the description of a meal or adjustment of portion (for example "Bánh xèo thêm 1 ly sữa đậu nành", "tô phở lớn hơn", "ít cơm hơn"). Based on that description, estimate a NEW nutrition breakdown for the ENTIRE meal and return ONLY a JSON object with this structure: { "foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": "high" | "medium" | "low" }. Do not include any explanation or markdown — only the raw JSON object.
+YÊU CẦU:
+- "foodName" phải là tên món ăn tiếng Việt nếu có thể (ví dụ: "Bánh xèo", "Phở bò", "Cơm tấm sườn").
+- Không thêm bất kỳ giải thích, markdown hoặc text nào ngoài JSON.
+- Nếu không phát hiện được món ăn, trả về: { "error": "No food detected" }.`
 
-User description: `
+const TEXT_PROMPT_PREFIX = `Bạn là chuyên gia dinh dưỡng, trả lời bằng tiếng Việt.
+Người dùng sẽ mô tả bữa ăn HOẶC điều chỉnh thêm món/khẩu phần (ví dụ: "Bánh xèo thêm 1 ly sữa đậu nành", "tô phở lớn hơn", "ít cơm hơn").
+Dựa trên mô tả đó, hãy ƯỚC TÍNH LẠI toạ bộ giá trị dinh dưỡng CHO CẢ BỮA (sau khi đã cộng/trừ món mới) và TRẢ VỀ DUY NHẤT một JSON với cấu trúc:
+{ "foodName": string, "calories": number, "protein": number, "carbs": number, "fat": number, "confidence": "high" | "medium" | "low" }.
+
+YÊU CẦU:
+- "foodName" nên là mô tả tiếng Việt rõ ràng của bữa ăn sau khi điều chỉnh.
+- Không thêm bất kỳ giải thích hay markdown nào, CHỈ JSON.
+
+Mô tả từ người dùng: `
 
 export async function POST(req: NextRequest) {
     const apiKey = process.env.GOOGLE_AI_API_KEY
