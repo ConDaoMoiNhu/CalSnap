@@ -40,10 +40,10 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     if (step === 1 && (!form.gender || !form.age || !form.height_cm || !form.weight_kg)) {
-      setError('Please fill in all fields'); return
+      setError('Vui lòng điền đầy đủ thông tin'); return
     }
     if (step === 2 && (!form.goal || !form.activity_level)) {
-      setError('Please select your goal and activity level'); return
+      setError('Vui lòng chọn mục tiêu và mức độ hoạt động'); return
     }
     setError('')
     setStep(s => (s + 1) as Step)
@@ -68,27 +68,48 @@ export default function OnboardingPage() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
-      <div className="glass-card rounded-[3rem] p-10 w-full max-w-lg mx-auto">
+      <div className="glass-card rounded-[3rem] p-8 md:p-10 w-full max-w-lg mx-auto">
 
-        {/* Progress dots */}
+        {/* Progress */}
         {step !== 3 && (
-          <div className="flex justify-center gap-2 mb-8">
-            {[1, 2].map(dot => (
-              <div key={dot} className={`h-2.5 rounded-full transition-all duration-300 ${
-                dot === step ? 'w-8 bg-emerald-500' : dot < step ? 'w-2.5 bg-emerald-300' : 'w-2.5 bg-slate-200'
-              }`} />
-            ))}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400">
+                Bước {step}/2
+              </p>
+              <p className="text-[11px] text-slate-400">
+                Mất khoảng <span className="font-semibold text-slate-700">1 phút</span>
+              </p>
+            </div>
+            <div className="flex gap-2">
+              {[1, 2].map(dot => (
+                <div
+                  key={dot}
+                  className={`h-2.5 flex-1 rounded-full transition-all duration-300 ${
+                    dot === step
+                      ? 'bg-emerald-500'
+                      : dot < step
+                        ? 'bg-emerald-200'
+                        : 'bg-slate-200'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
         )}
 
         {/* STEP 1 */}
         {step === 1 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <h1 className="text-2xl font-black text-slate-800 mb-1">Let&apos;s get to know you 👋</h1>
-            <p className="text-slate-400 text-sm mb-8">Tell us about yourself to personalize your plan.</p>
+            <h1 className="text-2xl font-black text-slate-800 mb-1">Giới thiệu một chút về bạn 👋</h1>
+            <p className="text-slate-400 text-sm mb-8">
+              Một vài thông tin cơ bản giúp CalSnap tạo kế hoạch phù hợp với cơ thể của bạn.
+            </p>
 
             <div className="mb-6">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 block">Gender</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 block">
+                Giới tính
+              </label>
               <div className="grid grid-cols-2 gap-3">
                 {(['male', 'female'] as const).map(g => (
                   <button key={g} onClick={() => set('gender', g)}
@@ -103,14 +124,16 @@ export default function OnboardingPage() {
             </div>
 
             <div className="mb-6">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">Age</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">
+                Tuổi
+              </label>
               <input type="number" value={form.age} onChange={e => set('age', e.target.value)} placeholder="25"
                 className="w-full px-4 py-3 rounded-2xl border border-slate-200 bg-white text-slate-800 font-semibold focus:outline-none focus:border-emerald-400" />
             </div>
 
             <div className="mb-6">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">
-                Height — <span className="text-emerald-500">{form.height_cm} cm</span>
+                Chiều cao — <span className="text-emerald-500">{form.height_cm} cm</span>
               </label>
               <input type="range" min="140" max="220" value={form.height_cm} onChange={e => set('height_cm', e.target.value)} className="w-full accent-emerald-500 mb-2" />
               <input type="number" value={form.height_cm} onChange={e => set('height_cm', e.target.value)}
@@ -119,7 +142,7 @@ export default function OnboardingPage() {
 
             <div className="mb-8">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">
-                Current Weight — <span className="text-emerald-500">{form.weight_kg} kg</span>
+                Cân nặng hiện tại — <span className="text-emerald-500">{form.weight_kg} kg</span>
               </label>
               <input type="range" min="40" max="200" value={form.weight_kg} onChange={e => set('weight_kg', e.target.value)} className="w-full accent-emerald-500 mb-2" />
               <input type="number" value={form.weight_kg} onChange={e => set('weight_kg', e.target.value)}
@@ -136,8 +159,10 @@ export default function OnboardingPage() {
         {/* STEP 2 */}
         {step === 2 && (
           <div className="animate-in fade-in slide-in-from-right-4 duration-300">
-            <h1 className="text-2xl font-black text-slate-800 mb-1">What&apos;s your goal? 🎯</h1>
-            <p className="text-slate-400 text-sm mb-8">We&apos;ll build your plan around this.</p>
+            <h1 className="text-2xl font-black text-slate-800 mb-1">Mục tiêu chính của bạn là gì? 🎯</h1>
+            <p className="text-slate-400 text-sm mb-8">
+              Kế hoạch dinh dưỡng và tập luyện sẽ xoay quanh mục tiêu này.
+            </p>
 
             <div className="flex flex-col gap-3 mb-6">
               {goalOptions.map(g => (
@@ -157,7 +182,7 @@ export default function OnboardingPage() {
             {form.goal && form.goal !== 'maintain' && (
               <div className="mb-6">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 block">
-                  Target Weight — <span className="text-emerald-500">{form.target_weight_kg} kg</span>
+                  Cân nặng mục tiêu — <span className="text-emerald-500">{form.target_weight_kg} kg</span>
                 </label>
                 <input type="range" min="40" max="200" value={form.target_weight_kg} onChange={e => set('target_weight_kg', e.target.value)} className="w-full accent-emerald-500 mb-2" />
                 <input type="number" value={form.target_weight_kg} onChange={e => set('target_weight_kg', e.target.value)}
@@ -166,7 +191,9 @@ export default function OnboardingPage() {
             )}
 
             <div className="mb-8">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 block">Activity Level</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 block">
+                Mức độ vận động
+              </label>
               <div className="flex flex-wrap gap-2">
                 {activityOptions.map(a => (
                   <button key={a.value} onClick={() => set('activity_level', a.value)} title={a.desc}
@@ -178,17 +205,25 @@ export default function OnboardingPage() {
                 ))}
               </div>
               {form.activity_level && (
-                <p className="text-xs text-slate-400 mt-2">{activityOptions.find(a => a.value === form.activity_level)?.desc}</p>
+                <p className="text-xs text-slate-400 mt-2">
+                  {activityOptions.find(a => a.value === form.activity_level)?.desc}
+                </p>
               )}
             </div>
 
             {error && <p className="text-red-500 text-sm mb-4 font-medium">{error}</p>}
             <div className="flex gap-3">
-              <button onClick={() => setStep(1)} className="px-6 py-4 rounded-2xl bg-slate-100 text-slate-600 font-bold flex items-center gap-2">
-                <ChevronLeft size={18} /> Back
+              <button
+                onClick={() => setStep(1)}
+                className="px-6 py-4 rounded-2xl bg-slate-100 text-slate-600 font-bold flex items-center gap-2"
+              >
+                <ChevronLeft size={18} /> Quay lại
               </button>
-              <button onClick={handleSubmit} className="flex-1 hoverboard-gradient text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2">
-                Generate My Plan <Sparkles size={18} />
+              <button
+                onClick={handleSubmit}
+                className="flex-1 hoverboard-gradient text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2"
+              >
+                Tạo kế hoạch với AI <Sparkles size={18} />
               </button>
             </div>
           </div>
@@ -203,8 +238,13 @@ export default function OnboardingPage() {
               </div>
               <div className="absolute inset-0 rounded-full hoverboard-gradient opacity-30 animate-ping" />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 mb-2">Creating your personalized plan ✨</h2>
-            <p className="text-slate-400 text-sm text-center">AI is analyzing your profile...<br />This takes just a moment.</p>
+            <h2 className="text-2xl font-black text-slate-800 mb-2">
+              Đang tạo kế hoạch cá nhân hoá ✨
+            </h2>
+            <p className="text-slate-400 text-sm text-center">
+              AI đang phân tích thông tin của bạn…<br />
+              Xong là chuyển ngay sang trang tóm tắt kế hoạch.
+            </p>
             <div className="flex gap-1.5 mt-8">
               {[0,1,2].map(i => (
                 <div key={i} className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />

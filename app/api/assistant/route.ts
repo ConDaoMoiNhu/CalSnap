@@ -111,8 +111,30 @@ Khi user nhắc đến việc ăn uống, hãy:
     const reply = result.response.text()
 
     return NextResponse.json({ reply })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Assistant error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+
+    const message =
+      typeof error?.message === 'string' ? error.message.toLowerCase() : ''
+
+    if (
+      message.includes('quota') ||
+      message.includes('exceeded') ||
+      message.includes('rate limit') ||
+      message.includes('429')
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            'Hệ thống AI đang quá tải hoặc đã vượt giới hạn trong thời gian ngắn. Vui lòng thử lại sau vài phút.',
+        },
+        { status: 429 },
+      )
+    }
+
+    return NextResponse.json(
+      { error: 'Đã xảy ra lỗi trên hệ thống AI. Vui lòng thử lại sau.' },
+      { status: 500 },
+    )
   }
 }

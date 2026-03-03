@@ -7,10 +7,10 @@ import { toast } from '@/components/toast'
 type Message = { role: 'user' | 'assistant'; content: string; timestamp: Date }
 
 const SUGGESTIONS = [
-  'How many calories in a bowl of pho?',
-  'What should I eat after workout?',
-  'Analyze my macros today',
-  'Healthy snack ideas under 200 cal',
+  'Hôm nay tôi đã ăn gì rồi?',
+  'Tôi nên ăn gì sau khi tập?',
+  'Phân tích macro ngày hôm nay',
+  'Gợi ý bữa nhẹ dưới 200 kcal',
 ]
 
 export default function ChatPage() {
@@ -44,17 +44,28 @@ export default function ChatPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to get response')
+        const isOverload = res.status === 429
+        const msg =
+          data?.error ??
+          (isOverload
+            ? 'Hệ thống AI đang quá tải, vui lòng thử lại sau vài phút.'
+            : 'Đã xảy ra lỗi khi gọi AI, vui lòng thử lại.')
+        throw new Error(msg)
       }
 
       const assistantMsg: Message = {
         role: 'assistant',
-        content: data.reply ?? 'Sorry, I could not generate a response.',
+        content:
+          data.reply ??
+          'Xin lỗi, hiện tại tôi không thể trả lời. Bạn thử lại sau nhé.',
         timestamp: new Date(),
       }
       setMessages((m) => [...m, assistantMsg])
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      const msg =
+        err instanceof Error
+          ? err.message
+          : 'Đã xảy ra lỗi, vui lòng thử lại.'
       toast.error(msg)
     } finally {
       setLoading(false)
@@ -75,9 +86,11 @@ export default function ChatPage() {
       {/* Header */}
       <div className="glass-card rounded-[2rem] p-4 mb-4 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-slate-800">AI Nutrition Coach 🤖</h1>
+          <h1 className="text-lg font-bold text-slate-800">
+            Huấn luyện viên dinh dưỡng AI 🤖
+          </h1>
           <span className="inline-block mt-1 px-2.5 py-0.5 bg-emerald-100 text-emerald-600 text-xs font-semibold rounded-full">
-            Powered by Gemini
+            Hoạt động bởi Gemini
           </span>
         </div>
         <button
@@ -100,7 +113,9 @@ export default function ChatPage() {
             <div className="w-16 h-16 rounded-2xl bg-emerald-100 flex items-center justify-center mb-4">
               <Sparkles className="h-8 w-8 text-emerald-500" />
             </div>
-            <h2 className="text-xl font-bold text-slate-800 mb-2">Ask me anything about nutrition!</h2>
+            <h2 className="text-xl font-bold text-slate-800 mb-2">
+              Hỏi mình bất cứ điều gì về dinh dưỡng!
+            </h2>
             <div className="flex flex-wrap gap-2 justify-center mt-4">
               {SUGGESTIONS.map((s) => (
                 <button
@@ -128,13 +143,15 @@ export default function ChatPage() {
                   : 'glass-card text-slate-800 rounded-tl-sm'
               }`}
             >
-              <p className="whitespace-pre-wrap">{m.content}</p>
+              <p className="whitespace-pre-wrap leading-relaxed">
+                {m.content}
+              </p>
               <p
                 className={`text-[10px] mt-1 ${
                   m.role === 'user' ? 'text-white/70' : 'text-slate-400'
                 }`}
               >
-                {m.timestamp.toLocaleTimeString('en-US', {
+                {m.timestamp.toLocaleTimeString('vi-VN', {
                   hour: 'numeric',
                   minute: '2-digit',
                 })}
@@ -164,7 +181,7 @@ export default function ChatPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about nutrition..."
+            placeholder="Hỏi về dinh dưỡng, bữa ăn, kế hoạch tập luyện..."
             disabled={loading}
             className="flex-1 min-w-0 bg-slate-50 rounded-2xl px-4 py-3 text-base font-medium text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 border-none"
           />

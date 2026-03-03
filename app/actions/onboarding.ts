@@ -72,25 +72,11 @@ Return ONLY a valid JSON object with this exact structure, no markdown, no expla
 
     let fitnessPlan = null
 
-    try {
-        const geminiRes = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { temperature: 0.3 },
-                }),
-            }
-        )
+    // Ưu tiên dùng GOOGLE_AI_API_KEY; fallback sang GEMINI_API_KEY cho kompat cũ
+    const apiKey = process.env.GOOGLE_AI_API_KEY ?? process.env.GEMINI_API_KEY
 
-        const geminiData = await geminiRes.json()
-        const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
-        const cleaned = text.replace(/```json|```/g, '').trim()
-        fitnessPlan = JSON.parse(cleaned)
-    } catch {
-        // Fallback plan nếu Gemini lỗi
+    if (!apiKey) {
+        // Không có API key: dùng fallback an toàn để app vẫn hoạt động
         fitnessPlan = {
             bmi: Math.round((data.weight_kg / ((data.height_cm / 100) ** 2)) * 10) / 10,
             bmi_category: 'Normal',
@@ -107,6 +93,44 @@ Return ONLY a valid JSON object with this exact structure, no markdown, no expla
             estimated_weeks_to_goal: 12,
             tips: ['Stay consistent', 'Track your meals', 'Get enough sleep'],
             summary: 'Stay consistent with your nutrition and exercise routine to reach your goal.',
+        }
+    } else {
+        try {
+            const geminiRes = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+                {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 0.3 },
+                    }),
+                }
+            )
+
+            const geminiData = await geminiRes.json()
+            const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? ''
+            const cleaned = text.replace(/```json|```/g, '').trim()
+            fitnessPlan = JSON.parse(cleaned)
+        } catch {
+            // Fallback plan nếu Gemini lỗi (quota, key sai, network, ...)
+            fitnessPlan = {
+                bmi: Math.round((data.weight_kg / ((data.height_cm / 100) ** 2)) * 10) / 10,
+                bmi_category: 'Normal',
+                bmr: 1800,
+                tdee: 2200,
+                daily_calories: 2000,
+                daily_protein_g: 150,
+                daily_carbs_g: 200,
+                daily_fat_g: 67,
+                water_liters: 2.5,
+                weekly_workouts: 3,
+                workout_duration_minutes: 45,
+                workout_types: ['Cardio', 'Strength Training'],
+                estimated_weeks_to_goal: 12,
+                tips: ['Stay consistent', 'Track your meals', 'Get enough sleep'],
+                summary: 'Stay consistent with your nutrition and exercise routine to reach your goal.',
+            }
         }
     }
 

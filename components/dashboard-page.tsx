@@ -14,6 +14,7 @@ import { WeeklyChart } from '@/components/weekly-chart'
 import { QuickRelog } from '@/components/quick-relog'
 import { getMealsForDate, getWeeklyCalories, relogMeal } from '@/app/actions/meals'
 import { toast } from 'sonner'
+import { MonthlySummaryCard } from '@/components/monthly-summary-card'
 
 interface MealSummary {
   calories: number
@@ -31,6 +32,12 @@ export default function DashboardPage() {
   const [recentMeals, setRecentMeals] = useState<any[]>([])
   const [weeklyCalories, setWeeklyCalories] = useState<{ date: string; calories: number }[]>([])
   const [loadingWeekly, setLoadingWeekly] = useState(true)
+  const [habits, setHabits] = useState<{
+    steps: number
+    water_ml: number
+    exercise_minutes: number
+    exercise_calories: number
+  } | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -38,13 +45,21 @@ export default function DashboardPage() {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [{ data: prof }, { data: meals }] = await Promise.all([
-        supabase.from('profiles').select('*').eq('id', user.id).single(),
-        supabase.from('meal_logs')
-          .select('calories, protein, carbs, fat')
-          .eq('user_id', user.id)
-          .eq('logged_at', date),
-      ])
+      const [{ data: prof }, { data: meals }, { data: habitsRow }] =
+        await Promise.all([
+          supabase.from('profiles').select('*').eq('id', user.id).single(),
+          supabase
+            .from('meal_logs')
+            .select('calories, protein, carbs, fat')
+            .eq('user_id', user.id)
+            .eq('logged_at', date),
+          supabase
+            .from('daily_habits')
+            .select('steps, water_ml, exercise_minutes, exercise_calories')
+            .eq('user_id', user.id)
+            .eq('date', date)
+            .maybeSingle(),
+        ])
 
       if (prof) setProfile(prof as DbProfile)
 
@@ -61,6 +76,12 @@ export default function DashboardPage() {
         setTotals(t)
       } else {
         setTotals({ calories: 0, protein: 0, carbs: 0, fat: 0 })
+      }
+
+      if (habitsRow) {
+        setHabits(habitsRow as any)
+      } else {
+        setHabits(null)
       }
 
       // Load "log lại gần đây" (một lần)
@@ -193,17 +214,20 @@ export default function DashboardPage() {
               AI-Powered Food Logging
             </p>
             <p className="text-sm font-black text-slate-800">
-              Transform your nutrition tracking với trợ lý AI.
+              Trợ lý AI hiểu dữ liệu ăn uống hôm nay của bạn.
             </p>
             <div className="mt-1 mb-2">
-              <div className="flex items-center gap-2 bg-slate-50 rounded-2xl px-3 py-2">
-                <span className="text-lg">✨</span>
-                <p className="text-xs text-slate-500">
-                  Tap to ask AI...{' '}
-                  <span className="font-semibold text-slate-700">
-                    "150g Cơm tấm sườn"
-                  </span>
-                </p>
+              <div className="flex flex-col gap-1">
+                <div className="flex items-center gap-2 bg-slate-50 rounded-2xl px-3 py-2">
+                  <span className="text-lg">✨</span>
+                  <p className="text-xs text-slate-500">
+                    Hôm nay bạn đã ăn{' '}
+                    <span className="font-semibold text-slate-700">
+                      {calories.toLocaleString()} / {calorieGoal.toLocaleString()} kcal
+                    </span>
+                    . Bấm để hỏi AI gợi ý bữa tiếp theo.
+                  </p>
+                </div>
               </div>
             </div>
             <Link
@@ -233,10 +257,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Habits + weekly + weight */}
-      <div className="grid gap-4 md:grid-cols-[minmax(0,2.2fr)_minmax(0,2fr)]">
+      {/* Habits + weekly + weight + monthly */}
+      <div className="grid gap-4 md:grid-cols-[minmax(0,2.1fr)_minmax(0,2.1fr)]">
         <div className="space-y-4">
-          <HabitCards date={date} initialHabits={null} />
+          <HabitCards date={date} initialHabits={habits} />
+          <MonthlySummaryCard />
         </div>
 
         <div className="space-y-4">
@@ -296,7 +321,7 @@ export default function DashboardPage() {
             />
           </div>
 
-          {/* Giữ lại WeeklyReport để sau này gắn data */}
+          {/* Báo cáo tuần & cân nặng */}
           <WeeklyReport data={null} />
           {profile?.weight_kg && profile?.target_weight_kg && (
             <WeightCheckin

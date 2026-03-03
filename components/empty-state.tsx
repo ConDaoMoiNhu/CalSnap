@@ -20,13 +20,21 @@ export function EmptyState({
   ctaHref,
   onCtaClick,
 }: EmptyStateProps) {
-  const Icon = icon ?? <Sparkles className="h-12 w-12 text-emerald-500 mx-auto" />
+  const Icon = icon ?? (
+    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-500 flex items-center justify-center">
+      <Sparkles className="h-6 w-6" />
+    </div>
+  )
 
   return (
-    <div className="glass-card rounded-[2rem] p-12 text-center border border-white/40">
+    <div className="glass-card rounded-[2rem] p-10 text-center border border-slate-100 bg-white/60">
       <div className="mb-4 flex justify-center">{Icon}</div>
       <p className="font-semibold text-slate-800">{title}</p>
-      {subtitle && <p className="text-sm text-slate-500 mt-1 mb-4">{subtitle}</p>}
+      {subtitle && (
+        <p className="text-sm text-slate-500 mt-1 mb-4 leading-relaxed max-w-md mx-auto">
+          {subtitle}
+        </p>
+      )}
       {(ctaLabel && (ctaHref || onCtaClick)) && (
         ctaHref ? (
           <Link
