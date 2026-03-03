@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Footprints, Droplets, Dumbbell } from 'lucide-react'
-import { upsertSteps, upsertWater, upsertExercise, getDailyHabits, type ExerciseType } from '@/app/actions/habits'
+import { upsertSteps, upsertWater, upsertExercise, type ExerciseType } from '@/app/actions/habits'
 import { toast } from '@/components/toast'
 
 const GLASS_ML = 250
@@ -17,9 +17,10 @@ interface HabitCardsProps {
     exercise_minutes: number
     exercise_calories: number
   } | null
+  onUpdate?: () => void
 }
 
-export function HabitCards({ date, initialHabits }: HabitCardsProps) {
+export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
   const [steps, setSteps] = useState(initialHabits?.steps ?? 0)
   const [waterMl, setWaterMl] = useState(initialHabits?.water_ml ?? 0)
   const [exerciseMinutes, setExerciseMinutes] = useState(initialHabits?.exercise_minutes ?? 0)
@@ -39,9 +40,8 @@ export function HabitCards({ date, initialHabits }: HabitCardsProps) {
 
   const waterGlasses = Math.round(waterMl / GLASS_ML)
   const stepsPercent = Math.min(100, (steps / STEPS_GOAL) * 100)
-  const rawStepCalories = steps * 0.04 // approx 0.04 kcal/step
-  const stepsCalories =
-    steps <= 0 ? 0 : Math.max(1, Math.round(rawStepCalories)) // không để ~0 khi đã có bước
+  const rawStepCalories = steps * 0.04
+  const stepsCalories = steps <= 0 ? 0 : Math.max(1, Math.round(rawStepCalories))
   const waterPercent = Math.min(100, (waterGlasses / WATER_GLASSES) * 100)
   const exercisePercent = Math.min(100, (exerciseMinutes / 30) * 100)
 
@@ -59,6 +59,7 @@ export function HabitCards({ date, initialHabits }: HabitCardsProps) {
     else {
       setSteps(val)
       toast.success('Steps updated!')
+      onUpdate?.()
     }
   }
 
@@ -70,6 +71,7 @@ export function HabitCards({ date, initialHabits }: HabitCardsProps) {
     else {
       setWaterMl(newMl)
       toast.success('Water updated!')
+      onUpdate?.()
     }
   }
 
@@ -90,6 +92,7 @@ export function HabitCards({ date, initialHabits }: HabitCardsProps) {
       setExerciseCalories((p) => p + mins * calPerMin)
       setExMinutes('')
       toast.success('Exercise logged!')
+      onUpdate?.() // Trigger dashboard refresh
     }
   }
 

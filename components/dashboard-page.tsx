@@ -1,7 +1,7 @@
 // components/dashboard-page.tsx
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { HabitCards } from '@/components/habit-cards'
@@ -38,13 +38,26 @@ export default function DashboardPage() {
     exercise_calories: number
   } | null>(null)
 
+  const loadHabits = useCallback(async (targetDate: string) => {
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    const { data: habitsRow } = await supabase
+      .from('daily_habits')
+      .select('steps, water_ml, exercise_minutes, exercise_calories')
+      .eq('user_id', user.id)
+      .eq('date', targetDate)
+      .maybeSingle()
+    setHabits(habitsRow as any ?? null)
+  }, [])
+
   useEffect(() => {
     const load = async () => {
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
-      const [{ data: prof }, { data: meals }, { data: habitsRow }] =
+      const [{ data: prof }, { data: meals }] =
         await Promise.all([
           supabase.from('profiles').select('*').eq('id', user.id).single(),
           supabase
@@ -52,12 +65,6 @@ export default function DashboardPage() {
             .select('calories, protein, carbs, fat')
             .eq('user_id', user.id)
             .eq('logged_at', date),
-          supabase
-            .from('daily_habits')
-            .select('steps, water_ml, exercise_minutes, exercise_calories')
-            .eq('user_id', user.id)
-            .eq('date', date)
-            .maybeSingle(),
         ])
 
       if (prof) setProfile(prof as DbProfile)
@@ -77,11 +84,7 @@ export default function DashboardPage() {
         setTotals({ calories: 0, protein: 0, carbs: 0, fat: 0 })
       }
 
-      if (habitsRow) {
-        setHabits(habitsRow as any)
-      } else {
-        setHabits(null)
-      }
+      await loadHabits(date)
 
       if (recentMeals.length === 0) {
         try {
@@ -113,6 +116,7 @@ export default function DashboardPage() {
   const plan = profile?.fitness_plan as any
   const calorieGoal = plan?.daily_calories ?? profile?.daily_calorie_goal ?? 2000
   const calories = totals?.calories ?? 0
+  const exerciseCalories = habits?.exercise_calories ?? 0
   const remaining = calorieGoal - calories
   const pct = calorieGoal > 0 ? Math.min(100, Math.round((calories / calorieGoal) * 100)) : 0
 
@@ -137,14 +141,18 @@ export default function DashboardPage() {
     month: 'long',
     year: 'numeric',
   })
-  const firstName =
-    profile?.full_name?.trim()?.split(' ')?.[0] ?? 'bạn'
+  const firstName = profile?.full_name?.trim()?.split(' ')?.[0] ?? 'bạn'
 
   const ringSize = 220
   const ringStroke = 18
   const r = (ringSize - ringStroke * 2) / 2
   const circ = 2 * Math.PI * r
   const dash = (pct / 100) * circ
+
+  // Exercise goal: tinh tu plan (45 phut * 8 MET * can nang / 60)
+  const weightKg = profile?.weight_kg ?? 70
+  const workoutDuration = plan?.workout_duration_minutes ?? 45
+  const estimatedBurnPerSession = Math.round(workoutDuration * 7 * weightKg / 60)
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto page-enter pb-24">
@@ -211,21 +219,29 @@ export default function DashboardPage() {
 
           {/* Mini stats */}
           <div className="flex justify-around mt-4">
-            {[
-              ['🎯', 'Mục tiêu', calorieGoal],
-              ['🍽️', 'Đã ăn', calories],
-              ['🔥', 'Đã đốt', 0],
-            ].map(([emoji, label, value]) => (
-              <div key={label as string} className="text-center">
-                <div className="text-lg">{emoji}</div>
-                <div className="text-white font-display font-extrabold text-lg tabular-nums">
-                  {(value as number).toLocaleString()}
-                </div>
-                <div className="text-white/65 text-[10px] font-semibold tracking-wide">
-                  {label}
-                </div>
+            <div className="text-center">
+              <div className="text-lg">🎯</div>
+              <div className="text-white font-display font-extrabold text-lg tabular-nums">
+                {calorieGoal.toLocaleString()}
               </div>
-            ))}
+              <div className="text-white/65 text-[10px] font-semibold tracking-wide">Mục tiêu</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg">🍽️</div>
+              <div className="text-white font-display font-extrabold text-lg tabular-nums">
+                {calories.toLocaleString()}
+              </div>
+              <div className="text-white/65 text-[10px] font-semibold tracking-wide">Đã ăn</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg">🔥</div>
+              <div className="text-white font-display font-extrabold text-lg tabular-nums">
+                {exerciseCalories > 0
+                  ? `${exerciseCalories.toLocaleString()}/${estimatedBurnPerSession.toLocaleString()}`
+                  : '0'}
+              </div>
+              <div className="text-white/65 text-[10px] font-semibold tracking-wide">Đã đốt</div>
+            </div>
           </div>
 
           {/* Date strip */}
@@ -237,7 +253,6 @@ export default function DashboardPage() {
                 const dayLabel = weekdayLabels[d.getDay()]
                 const dayCalories =
                   weeklyCalories.find((x) => x.date === dStr)?.calories ?? 0
-                // Bỏ Math.min(100) để hiển thị > 100% khi vượt mục tiêu
                 const dayPct = calorieGoal > 0 ? Math.round((dayCalories / calorieGoal) * 100) : 0
 
                 return (
@@ -292,7 +307,11 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <HabitCards date={date} initialHabits={habits} />
+          <HabitCards
+            date={date}
+            initialHabits={habits}
+            onUpdate={() => loadHabits(date)}
+          />
           <MonthlySummaryCard />
         </div>
 
@@ -410,7 +429,11 @@ export default function DashboardPage() {
       {/* Habits + weekly + weight + monthly */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,2.1fr)_minmax(0,2.1fr)]">
         <div className="space-y-4">
-          <HabitCards date={date} initialHabits={habits} />
+          <HabitCards
+            date={date}
+            initialHabits={habits}
+            onUpdate={() => loadHabits(date)}
+          />
           <MonthlySummaryCard />
         </div>
 
