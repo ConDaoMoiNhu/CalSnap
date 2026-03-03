@@ -216,12 +216,12 @@ export function MonthlySummaryCard() {
                     boxShadow: '0 10px 30px rgba(15,23,42,0.12)',
                     fontSize: 11,
                   }}
-                  formatter={(value: any, key: string) => {
-                    if (key === 'calories') return [`${value} kcal`, 'Calories']
-                    if (key === 'protein') return [`${value} g`, 'Protein']
-                    if (key === 'steps') return [`${value.toLocaleString()} bước`, 'Steps']
-                    if (key === 'water') return [`${value} L`, 'Water']
-                    return [value, key]
+                  formatter={(value: any, name?: string) => {
+                    if (name === 'calories') return [`${value} kcal`, 'Calories']
+                    if (name === 'protein') return [`${value} g`, 'Protein']
+                    if (name === 'steps') return [`${value.toLocaleString()} bước`, 'Steps']
+                    if (name === 'water') return [`${value} L`, 'Water']
+                    return [value, name ?? '']
                   }}
                   labelFormatter={(value) => `Ngày ${value}`}
                 />

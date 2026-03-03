@@ -2,14 +2,15 @@
 
 import { createClient } from '@/lib/supabase/server'
 
-export async function updateGoals(formData: FormData) {
+export async function updateGoals(formData: FormData): Promise<void> {
   const supabase = await createClient()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   if (!user) {
-    return { error: 'Not authenticated' }
+    console.error('updateGoals: not authenticated')
+    return
   }
 
   const dailyCaloriesRaw = formData.get('daily_calories') as string | null
@@ -27,7 +28,8 @@ export async function updateGoals(formData: FormData) {
   }
 
   if (Object.keys(update).length === 0) {
-    return { error: 'Giá trị không hợp lệ' }
+    console.error('updateGoals: invalid values')
+    return
   }
 
   const { error } = await supabase
@@ -36,9 +38,8 @@ export async function updateGoals(formData: FormData) {
     .eq('id', user.id)
 
   if (error) {
-    return { error: error.message }
+    console.error('updateGoals error:', error.message)
   }
-
-  return { success: true }
 }
+
 
