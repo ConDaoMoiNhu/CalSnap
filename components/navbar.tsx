@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logout } from '@/app/actions/auth'
 import { Button } from '@/components/ui/button'
-import { Flame, LogOut } from 'lucide-react'
+import { LogOut } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -37,9 +38,7 @@ export function Navbar() {
     <header className="hidden md:block bg-white/70 backdrop-blur sticky top-0 z-40 border-b border-white/40 px-8 py-4">
       <div className="max-w-6xl mx-auto flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl hoverboard-gradient flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-            <Flame className="h-5 w-5" fill="currentColor" />
-          </div>
+          <Image src="/calsnap-logo.svg" width={36} height={36} alt="CalSnap" />
           <span className="text-xl font-black text-slate-800">CalSnap</span>
         </Link>
 

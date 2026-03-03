@@ -17,49 +17,57 @@ export function MobileBottomNav() {
   const pathname = usePathname()
 
   return (
-    <nav
-      className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-center items-end pb-3"
-      style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
-    >
-      <div className="relative max-w-xs w-full flex justify-center">
-        {/* Dark pill */}
-        <div className="w-full bg-slate-950/90 backdrop-blur-2xl rounded-full px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.6)] border border-white/10 flex items-center justify-between gap-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href
-            const isCenter = href === '/scan'
+    <>
+      {/* Background trắng che vùng safe area phía dưới home indicator iPhone */}
+      <div
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white"
+        style={{ height: 'env(safe-area-inset-bottom)' }}
+      />
 
-            return (
-              <Link
-                key={href}
-                href={href}
-                aria-label={label}
-                className={cn(
-                  'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-white/60',
-                  isCenter && 'relative'
-                )}
-              >
-                <span
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 flex justify-center items-end"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
+      >
+        <div className="relative max-w-xs w-full flex justify-center px-4">
+          {/* Dark pill */}
+          <div className="w-full bg-slate-950/90 backdrop-blur-2xl rounded-full px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.6)] border border-white/10 flex items-center justify-between gap-1">
+            {navItems.map(({ href, label, icon: Icon }) => {
+              const isActive = pathname === href
+              const isCenter = href === '/scan'
+
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  aria-label={label}
                   className={cn(
-                    'flex items-center justify-center rounded-full transition-all',
-                    isCenter
-                      ? 'w-[52px] h-[52px] -mt-7 hoverboard-gradient text-white shadow-[0_10px_30px_rgba(46,125,50,0.45)]'
-                      : 'w-8 h-8',
-                    !isCenter &&
-                      (isActive ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/60')
+                    'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-white/60',
+                    isCenter && 'relative'
                   )}
                 >
-                  <Icon className={cn('h-4 w-4', isCenter && 'h-5 w-5')} />
-                </span>
-                {!isCenter && (
-                  <span className={cn(isActive ? 'text-emerald-400' : 'text-white/50')}>
-                    {label}
+                  <span
+                    className={cn(
+                      'flex items-center justify-center rounded-full transition-all',
+                      isCenter
+                        ? 'w-[52px] h-[52px] -mt-7 hoverboard-gradient text-white shadow-[0_10px_30px_rgba(46,125,50,0.45)]'
+                        : 'w-8 h-8',
+                      !isCenter &&
+                        (isActive ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/60')
+                    )}
+                  >
+                    <Icon className={cn('h-4 w-4', isCenter && 'h-5 w-5')} />
                   </span>
-                )}
-              </Link>
-            )
-          })}
+                  {!isCenter && (
+                    <span className={cn(isActive ? 'text-emerald-400' : 'text-white/50')}>
+                      {label}
+                    </span>
+                  )}
+                </Link>
+              )
+            })}
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </>
   )
 }
