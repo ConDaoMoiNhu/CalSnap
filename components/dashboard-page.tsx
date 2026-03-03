@@ -22,6 +22,13 @@ interface MealSummary {
   fat: number
 }
 
+interface HabitsData {
+  steps: number
+  water_ml: number
+  exercise_minutes: number
+  exercise_calories: number
+}
+
 export default function DashboardPage() {
   const [profile, setProfile] = useState<DbProfile | null>(null)
   const [totals, setTotals] = useState<MealSummary | null>(null)
@@ -31,12 +38,8 @@ export default function DashboardPage() {
   const [recentMeals, setRecentMeals] = useState<any[]>([])
   const [weeklyCalories, setWeeklyCalories] = useState<{ date: string; calories: number }[]>([])
   const [loadingWeekly, setLoadingWeekly] = useState(true)
-  const [habits, setHabits] = useState<{
-    steps: number
-    water_ml: number
-    exercise_minutes: number
-    exercise_calories: number
-  } | null>(null)
+  const [habits, setHabits] = useState<HabitsData | null>(null)
+  const [exerciseCalories, setExerciseCalories] = useState(0)
 
   const loadHabits = useCallback(async (targetDate: string) => {
     const supabase = createClient()
@@ -48,7 +51,9 @@ export default function DashboardPage() {
       .eq('user_id', user.id)
       .eq('date', targetDate)
       .maybeSingle()
-    setHabits(habitsRow as any ?? null)
+    const h = (habitsRow as HabitsData | null) ?? null
+    setHabits(h)
+    setExerciseCalories(h?.exercise_calories ?? 0)
   }, [])
 
   useEffect(() => {
@@ -116,7 +121,6 @@ export default function DashboardPage() {
   const plan = profile?.fitness_plan as any
   const calorieGoal = plan?.daily_calories ?? profile?.daily_calorie_goal ?? 2000
   const calories = totals?.calories ?? 0
-  const exerciseCalories = habits?.exercise_calories ?? 0
   const remaining = calorieGoal - calories
   const pct = calorieGoal > 0 ? Math.min(100, Math.round((calories / calorieGoal) * 100)) : 0
 
@@ -141,7 +145,8 @@ export default function DashboardPage() {
     month: 'long',
     year: 'numeric',
   })
-  const firstName = profile?.full_name?.trim()?.split(' ')?.[0] ?? 'bạn'
+  const firstName =
+    profile?.full_name?.trim()?.split(' ')?.[0] ?? 'bạn'
 
   const ringSize = 220
   const ringStroke = 18
@@ -149,7 +154,6 @@ export default function DashboardPage() {
   const circ = 2 * Math.PI * r
   const dash = (pct / 100) * circ
 
-  // Exercise goal: tinh tu plan (45 phut * 8 MET * can nang / 60)
   const weightKg = profile?.weight_kg ?? 70
   const workoutDuration = plan?.workout_duration_minutes ?? 45
   const estimatedBurnPerSession = Math.round(workoutDuration * 7 * weightKg / 60)
@@ -238,7 +242,7 @@ export default function DashboardPage() {
               <div className="text-white font-display font-extrabold text-lg tabular-nums">
                 {exerciseCalories > 0
                   ? `${exerciseCalories.toLocaleString()}/${estimatedBurnPerSession.toLocaleString()}`
-                  : '0'}
+                  : `0/${estimatedBurnPerSession.toLocaleString()}`}
               </div>
               <div className="text-white/65 text-[10px] font-semibold tracking-wide">Đã đốt</div>
             </div>
@@ -291,6 +295,7 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-[minmax(0,3fr)_minmax(0,2.2fr)]">
         {/* Left: macros + habits */}
         <div className="space-y-4">
+          {/* Macros summary */}
           <div className="glass-card rounded-[2rem] p-5">
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -308,16 +313,17 @@ export default function DashboardPage() {
           </div>
 
           <HabitCards
-            key={`habits-${date}-${habits?.exercise_calories ?? 0}`}
+            key={`habits-${date}`}
             date={date}
             initialHabits={habits}
-            onUpdate={() => loadHabits(date)}
+            onUpdate={async () => await loadHabits(date)}
           />
           <MonthlySummaryCard />
         </div>
 
         {/* Right: AI tools + charts + relog */}
         <div className="space-y-4">
+          {/* AI logging */}
           <div className="glass-card rounded-[2rem] p-5 flex flex-col gap-3">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
               Trợ lý AI
@@ -362,6 +368,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
+          {/* Weekly chart */}
           <div className="glass-card rounded-[2rem] p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
@@ -382,6 +389,7 @@ export default function DashboardPage() {
             )}
           </div>
 
+          {/* Quick relog */}
           <div className="glass-card rounded-[2rem] p-5">
             <QuickRelog
               recentMeals={recentMeals}
@@ -392,7 +400,6 @@ export default function DashboardPage() {
                   return
                 }
                 toast.success(`Đã log lại: ${meal.food_name} (${meal.calories} kcal)`)
-
                 if (date === todayStr) {
                   const supabase = createClient()
                   const { data: { user } } = await supabase.auth.getUser()
@@ -416,6 +423,7 @@ export default function DashboardPage() {
             />
           </div>
 
+          {/* Weekly report + weight */}
           <WeeklyReport data={null} />
           {profile?.weight_kg && profile?.target_weight_kg && (
             <WeightCheckin
@@ -431,10 +439,10 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-[minmax(0,2.1fr)_minmax(0,2.1fr)]">
         <div className="space-y-4">
           <HabitCards
-            key={`habits-${date}-${habits?.exercise_calories ?? 0}`}
+            key={`habits2-${date}`}
             date={date}
             initialHabits={habits}
-            onUpdate={() => loadHabits(date)}
+            onUpdate={async () => await loadHabits(date)}
           />
           <MonthlySummaryCard />
         </div>
@@ -470,7 +478,6 @@ export default function DashboardPage() {
                   return
                 }
                 toast.success(`Đã log lại: ${meal.food_name} (${meal.calories} kcal)`)
-
                 if (date === todayStr) {
                   const supabase = createClient()
                   const { data: { user } } = await supabase.auth.getUser()
