@@ -163,7 +163,7 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto page-enter pb-24">
       {/* NutriAI header */}
-      <div className="-mx-4 md:-mx-8 nutri-header">
+      <div className={`-mx-4 md:-mx-8 ${isOverGoal ? 'nutri-header-danger' : 'nutri-header'}`}>
         <div className="relative z-10 px-5 md:px-8 pt-12 pb-7">
           <div className="flex items-center justify-between gap-4 mb-5">
             <div>
@@ -218,8 +218,8 @@ export default function DashboardPage() {
                 stroke="url(#nutriRing)"
                 strokeWidth={ringStroke}
                 strokeLinecap="round"
-                strokeDasharray={`${dash} ${circ}`}
-                strokeDashoffset={circ / 4}
+                strokeDasharray={isOverGoal ? `${circ} 0` : `${dash} ${circ}`}
+                strokeDashoffset={isOverGoal ? 0 : circ / 4}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
