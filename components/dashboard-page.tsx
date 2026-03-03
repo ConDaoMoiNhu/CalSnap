@@ -14,6 +14,7 @@ import { QuickRelog } from '@/components/quick-relog'
 import { getMealsForDate, getWeeklyCalories, relogMeal } from '@/app/actions/meals'
 import { toast } from 'sonner'
 import { MonthlySummaryCard } from '@/components/monthly-summary-card'
+import { DailyTracker } from '@/components/daily-tracker'
 
 interface MealSummary {
   calories: number
@@ -63,7 +64,7 @@ export default function DashboardPage() {
       setExerciseCalories(h?.exercise_calories ?? 0)
 
       if (recentMeals.length === 0) {
-        try { setRecentMeals((await getMealsForDate('recent') as any[]) ?? []) } catch {}
+        try { setRecentMeals((await getMealsForDate('recent') as any[]) ?? []) } catch { }
       }
     }
     load()
@@ -123,6 +124,18 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 max-w-5xl mx-auto page-enter pb-24">
 
+      {/* ── SKELETON FALLBACK when profile not yet loaded ── */}
+      {!profile && !totals && (
+        <div className="space-y-4">
+          <div className="h-72 rounded-[2rem] bg-slate-100 animate-pulse" />
+          <div className="h-24 rounded-[2rem] bg-slate-100 animate-pulse" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="h-48 rounded-[2rem] bg-slate-100 animate-pulse" />
+            <div className="h-48 rounded-[2rem] bg-slate-100 animate-pulse" />
+          </div>
+        </div>
+      )}
+
       {/* ── HEADER ── */}
       <div className={`nutri-header rounded-[2rem] overflow-hidden ${isOverGoal ? 'nutri-header-danger' : 'nutri-header'}`}>
         <div className="relative z-10 px-5 md:px-8 pt-12 pb-7">
@@ -141,8 +154,8 @@ export default function DashboardPage() {
                   {isOverGoal ? <><stop offset="0%" stopColor="#FF5252" /><stop offset="100%" stopColor="#FF1744" /></> : <><stop offset="0%" stopColor="#A8E063" /><stop offset="100%" stopColor="#5CB85C" /></>}
                 </linearGradient>
               </defs>
-              <circle cx={ringSize/2} cy={ringSize/2} r={r} fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth={ringStroke} />
-              <circle cx={ringSize/2} cy={ringSize/2} r={r} fill="none" stroke="url(#nutriRing)" strokeWidth={ringStroke} strokeLinecap="round"
+              <circle cx={ringSize / 2} cy={ringSize / 2} r={r} fill="none" stroke="rgba(255,255,255,0.20)" strokeWidth={ringStroke} />
+              <circle cx={ringSize / 2} cy={ringSize / 2} r={r} fill="none" stroke="url(#nutriRing)" strokeWidth={ringStroke} strokeLinecap="round"
                 strokeDasharray={isOverGoal ? `${circ} 0` : `${dash} ${circ}`}
                 strokeDashoffset={isOverGoal ? 0 : circ / 4}
               />
@@ -178,10 +191,9 @@ export default function DashboardPage() {
                   <button key={idx} type="button" onClick={() => setDate(dStr)}
                     className={`flex-1 rounded-xl px-1.5 py-2 transition-all text-center ${isActive ? 'bg-white' : 'bg-transparent hover:bg-white/10'}`}>
                     <div className={`text-[10px] font-semibold ${isActive ? 'text-[#2E7D32]' : 'text-white/80'}`}>{weekdayLabels[d.getDay()]}</div>
-                    <div className={`w-7 h-7 rounded-full mx-auto mt-1 flex items-center justify-center text-[10px] font-bold ${
-                      dayPct > 100 ? (isActive ? 'bg-red-500 text-white' : 'bg-red-400 text-white')
+                    <div className={`w-7 h-7 rounded-full mx-auto mt-1 flex items-center justify-center text-[10px] font-bold ${dayPct > 100 ? (isActive ? 'bg-red-500 text-white' : 'bg-red-400 text-white')
                       : isActive ? 'bg-[#2E7D32] text-white' : 'bg-white/15 text-white'
-                    }`}>{dayPct}%</div>
+                      }`}>{dayPct}%</div>
                   </button>
                 )
               })}
@@ -206,12 +218,19 @@ export default function DashboardPage() {
       {/* ── GRID CHÍNH: Habits | AI + Chart ── */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
 
-        {/* Cột trái: Habits */}
-        <HabitCards
-          date={date}
-          initialHabits={habits}
-          onUpdate={(newCal) => { if (newCal !== undefined) setExerciseCalories(newCal) }}
-        />
+        {/* Cột trái: Habits + Water/Steps Tracker */}
+        <div className="space-y-4">
+          <HabitCards
+            date={date}
+            initialHabits={habits}
+            onUpdate={(newCal) => { if (newCal !== undefined) setExerciseCalories(newCal) }}
+          />
+          <DailyTracker
+            date={date}
+            initialSteps={habits?.steps ?? 0}
+            initialWaterMl={habits?.water_ml ?? 0}
+          />
+        </div>
 
         {/* Cột phải: AI + Weekly chart */}
         <div className="space-y-4">
@@ -239,7 +258,7 @@ export default function DashboardPage() {
             </div>
             {loadingWeekly ? <div className="h-48 rounded-2xl bg-slate-50 animate-pulse" /> :
               weeklyCalories.length === 0 ? <p className="text-xs text-slate-400">Chưa có dữ liệu — hãy log vài bữa ăn nhé.</p> :
-              <WeeklyChart data={weeklyCalories} goal={calorieGoal} />}
+                <WeeklyChart data={weeklyCalories} goal={calorieGoal} />}
           </div>
         </div>
       </div>

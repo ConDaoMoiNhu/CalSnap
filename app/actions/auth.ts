@@ -59,3 +59,22 @@ export async function logout() {
     await supabase.auth.signOut()
     redirect('/login')
 }
+
+export async function loginWithGoogle() {
+    const supabase = await createClient()
+    const appUrl = getAppUrl()
+    const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+            redirectTo: `${appUrl}/auth/callback`,
+            queryParams: {
+                access_type: 'offline',
+                prompt: 'consent',
+            },
+        },
+    })
+    if (error || !data.url) {
+        redirect(`/login?message=${encodeURIComponent('Không thể kết nối Google. Vui lòng thử lại.')}`)
+    }
+    redirect(data.url)
+}

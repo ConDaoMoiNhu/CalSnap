@@ -1,6 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { rateLimit } from '@/lib/rate-limit'
+import { z } from 'zod'
+
+const ImageBodySchema = z.object({
+    image: z.string().min(10, 'Image data is required'),
+    textOnly: z.undefined().optional(),
+})
+
+const TextBodySchema = z.object({
+    textOnly: z.literal(true),
+    foodNameHint: z.string().min(1, 'foodNameHint is required'),
+})
+
+const BodySchema = z.union([TextBodySchema, ImageBodySchema])
 
 const IMAGE_PROMPT = `Bạn là chuyên gia dinh dưỡng, trả lời bằng tiếng Việt.
 Phân tích món ăn trong bức ảnh và TRẢ VỀ DUY NHẤT một JSON với cấu trúc:
@@ -49,10 +62,18 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        const body = await req.json()
+        const rawBody = await req.json()
+        const zodResult = BodySchema.safeParse(rawBody)
+        if (!zodResult.success) {
+            return NextResponse.json(
+                { error: `Dữ liệu không hợp lệ: ${zodResult.error.issues.map((e) => e.message).join(', ')}` },
+                { status: 400 }
+            )
+        }
+        const body = zodResult.data
 
-        // Text-only adjustment mode (used by AI Portion Assistant)
-        if (body.textOnly && typeof body.foodNameHint === 'string') {
+        // Text-only adjustment mode
+        if ('textOnly' in body && body.textOnly) {
             const genAI = new GoogleGenerativeAI(apiKey)
             const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
@@ -140,16 +161,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'AI tra ve dinh dang khong hop le. Thu lai.' }, { status: 500 })
         }
 
-        const parsed = JSON.parse(jsonMatch[0])
+        const aiJson = JSON.parse(jsonMatch[0])
 
-        if (parsed.error) {
-            return NextResponse.json({ error: parsed.error })
+        if (aiJson.error) {
+            return NextResponse.json({ error: aiJson.error })
         }
 
-        const { foodName, calories, protein, carbs, fat, confidence } = parsed
+        const { foodName, calories, protein, carbs, fat, confidence } = aiJson
 
         if (typeof foodName !== 'string') {
-            console.error('[/api/analyze] Incomplete data:', parsed)
+            console.error('[/api/analyze] Incomplete data:', aiJson)
             return NextResponse.json({ error: 'AI khong the tinh du thong tin dinh duong. Thu anh ro hon.' }, { status: 500 })
         }
 

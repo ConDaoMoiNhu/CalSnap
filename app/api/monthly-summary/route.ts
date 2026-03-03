@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { z } from 'zod'
+
+const QuerySchema = z.object({
+  year: z.coerce.number().int().min(2020).max(2100),
+  month: z.coerce.number().int().min(1).max(12),
+})
 
 export async function GET(req: NextRequest) {
   try {
@@ -13,9 +19,14 @@ export async function GET(req: NextRequest) {
     }
 
     const url = new URL(req.url)
-    const year = Number(url.searchParams.get('year')) || new Date().getFullYear()
-    const month =
-      Number(url.searchParams.get('month')) || new Date().getMonth() + 1
+    const queryParsed = QuerySchema.safeParse({
+      year: url.searchParams.get('year') ?? new Date().getFullYear(),
+      month: url.searchParams.get('month') ?? new Date().getMonth() + 1,
+    })
+    if (!queryParsed.success) {
+      return NextResponse.json({ error: 'year và month phải là số hợp lệ.' }, { status: 400 })
+    }
+    const { year, month } = queryParsed.data
 
     const start = new Date(year, month - 1, 1)
     const end = new Date(year, month, 0)
@@ -49,42 +60,42 @@ export async function GET(req: NextRequest) {
 
     const byDate = new Map<string, DayAgg>()
 
-    ;(meals ?? []).forEach((m: any) => {
-      const key = m.logged_at
-      const existing =
-        byDate.get(key) ?? {
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          steps: 0,
-          water_ml: 0,
-          exercise_minutes: 0,
-        }
-      existing.calories += m.calories ?? 0
-      existing.protein += m.protein ?? 0
-      existing.carbs += m.carbs ?? 0
-      existing.fat += m.fat ?? 0
-      byDate.set(key, existing)
-    })
+      ; (meals ?? []).forEach((m: any) => {
+        const key = m.logged_at
+        const existing =
+          byDate.get(key) ?? {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            steps: 0,
+            water_ml: 0,
+            exercise_minutes: 0,
+          }
+        existing.calories += m.calories ?? 0
+        existing.protein += m.protein ?? 0
+        existing.carbs += m.carbs ?? 0
+        existing.fat += m.fat ?? 0
+        byDate.set(key, existing)
+      })
 
-    ;(habits ?? []).forEach((h: any) => {
-      const key = h.date
-      const existing =
-        byDate.get(key) ?? {
-          calories: 0,
-          protein: 0,
-          carbs: 0,
-          fat: 0,
-          steps: 0,
-          water_ml: 0,
-          exercise_minutes: 0,
-        }
-      existing.steps = h.steps ?? 0
-      existing.water_ml = h.water_ml ?? 0
-      existing.exercise_minutes = h.exercise_minutes ?? 0
-      byDate.set(key, existing)
-    })
+      ; (habits ?? []).forEach((h: any) => {
+        const key = h.date
+        const existing =
+          byDate.get(key) ?? {
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            steps: 0,
+            water_ml: 0,
+            exercise_minutes: 0,
+          }
+        existing.steps = h.steps ?? 0
+        existing.water_ml = h.water_ml ?? 0
+        existing.exercise_minutes = h.exercise_minutes ?? 0
+        byDate.set(key, existing)
+      })
 
     const days = Array.from(byDate.entries())
       .sort(([a], [b]) => (a < b ? -1 : 1))

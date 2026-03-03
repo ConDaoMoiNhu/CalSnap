@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { MonthlySummaryCard } from '@/components/monthly-summary-card'
 import { ArrowLeft, Sparkles } from 'lucide-react'
+import { ExportButton } from '@/components/export-button'
 
 export default function MonthlyOverviewPage() {
   return (
@@ -32,6 +33,8 @@ export default function MonthlyOverviewPage() {
             </p>
           </div>
         </div>
+        {/* Export button */}
+        <ExportButton year={new Date().getFullYear()} month={new Date().getMonth() + 1} />
       </div>
 
       <div className="grid gap-5 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] items-start">

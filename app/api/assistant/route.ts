@@ -3,6 +3,22 @@ import { createClient } from '@/lib/supabase/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
+import { z } from 'zod'
+
+const BodySchema = z.object({
+  message: z.string().max(2000).optional().default(''),
+  imageBase64: z.string().optional(),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().max(4000),
+      })
+    )
+    .max(50)
+    .optional()
+    .default([]),
+})
 
 export async function POST(req: NextRequest) {
   try {
@@ -22,7 +38,15 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { message, imageBase64, history } = await req.json()
+    const rawBody = await req.json()
+    const parsed = BodySchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: `Dữ liệu không hợp lệ: ${parsed.error.issues.map((e) => e.message).join(', ')}` },
+        { status: 400 }
+      )
+    }
+    const { message, imageBase64, history } = parsed.data
 
     const apiKey = process.env.GOOGLE_AI_API_KEY
     if (!apiKey) {
