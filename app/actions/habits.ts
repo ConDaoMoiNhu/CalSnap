@@ -15,7 +15,6 @@ const CAL_PER_MIN: Record<ExerciseType, number> = {
 export async function getDailyHabits(date: string) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-
   if (authError || !user) return null
 
   const { data, error } = await supabase
@@ -25,18 +24,13 @@ export async function getDailyHabits(date: string) {
     .eq('date', date)
     .single()
 
-  // Nếu bảng chưa tồn tại, trả về null để UI dùng default, không báo lỗi
-  if (error && error.message?.toLowerCase().includes('daily_habits')) {
-    return null
-  }
-
+  if (error && error.message?.toLowerCase().includes('daily_habits')) return null
   return data ?? null
 }
 
 export async function upsertSteps(date: string, steps: number) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-
   if (authError || !user) return { error: 'Not authenticated' }
 
   const { error } = await supabase
@@ -47,10 +41,7 @@ export async function upsertSteps(date: string, steps: number) {
     )
 
   if (error) {
-    // Bảng chưa tạo: bỏ qua để tránh spam lỗi trong dev
-    if (error.message?.toLowerCase().includes('daily_habits')) {
-      return { success: true }
-    }
+    if (error.message?.toLowerCase().includes('daily_habits')) return { success: true }
     return { error: error.message }
   }
   revalidatePath('/')
@@ -60,7 +51,6 @@ export async function upsertSteps(date: string, steps: number) {
 export async function upsertWater(date: string, waterMl: number) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-
   if (authError || !user) return { error: 'Not authenticated' }
 
   const { error } = await supabase
@@ -71,9 +61,7 @@ export async function upsertWater(date: string, waterMl: number) {
     )
 
   if (error) {
-    if (error.message?.toLowerCase().includes('daily_habits')) {
-      return { success: true }
-    }
+    if (error.message?.toLowerCase().includes('daily_habits')) return { success: true }
     return { error: error.message }
   }
   revalidatePath('/')
@@ -87,22 +75,17 @@ export async function upsertExercise(
 ) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
-
   if (authError || !user) return { error: 'Not authenticated' }
 
   const calories = Math.round(minutes * CAL_PER_MIN[type])
 
-  const { data: existing, error: existingError } = await supabase
+  // Dùng maybeSingle thay single để tránh lỗi khi chưa có row
+  const { data: existing } = await supabase
     .from('daily_habits')
     .select('exercise_minutes, exercise_calories')
     .eq('user_id', user.id)
     .eq('date', date)
-    .single()
-
-  if (existingError && existingError.message?.toLowerCase().includes('daily_habits')) {
-    // Nếu bảng không tồn tại, coi như log thành công nhưng chỉ lưu client-side
-    return { success: true }
-  }
+    .maybeSingle()
 
   const newMinutes = (existing?.exercise_minutes ?? 0) + minutes
   const newCalories = (existing?.exercise_calories ?? 0) + calories
@@ -120,19 +103,18 @@ export async function upsertExercise(
     )
 
   if (error) {
-    if (error.message?.toLowerCase().includes('daily_habits')) {
-      return { success: true }
-    }
+    if (error.message?.toLowerCase().includes('daily_habits')) return { success: true }
     return { error: error.message }
   }
+
   revalidatePath('/')
-  return { success: true }
+  // Trả về newCalories để client dùng trực tiếp — không cần fetch lại DB
+  return { success: true, newCalories }
 }
 
 export async function getStreakAndWeeklyMeals(userId: string) {
   const supabase = await createClient()
 
-  const today = new Date().toISOString().split('T')[0]
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
   const startDate = sevenDaysAgo.toISOString().split('T')[0]

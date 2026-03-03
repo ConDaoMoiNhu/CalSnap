@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Footprints, Droplets, Dumbbell } from 'lucide-react'
 import { upsertSteps, upsertWater, upsertExercise, type ExerciseType } from '@/app/actions/habits'
-import { toast } from '@/components/toast'
+import { toast } from 'sonner'
 
 const GLASS_ML = 250
 const STEPS_GOAL = 10000
@@ -31,24 +31,19 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
   const [exMinutes, setExMinutes] = useState('')
   const [exType, setExType] = useState<ExerciseType>('Walking')
 
+  // Sync lại khi initialHabits thay đổi (ví dụ khi date thay đổi hoặc dashboard fetch lại)
   useEffect(() => {
     setSteps(initialHabits?.steps ?? 0)
     setWaterMl(initialHabits?.water_ml ?? 0)
     setExerciseMinutes(initialHabits?.exercise_minutes ?? 0)
     setExerciseCalories(initialHabits?.exercise_calories ?? 0)
-  }, [date, initialHabits])
+  }, [initialHabits])
 
   const waterGlasses = Math.round(waterMl / GLASS_ML)
   const stepsPercent = Math.min(100, (steps / STEPS_GOAL) * 100)
-  const rawStepCalories = steps * 0.04
-  const stepsCalories = steps <= 0 ? 0 : Math.max(1, Math.round(rawStepCalories))
+  const stepsCalories = steps <= 0 ? 0 : Math.max(1, Math.round(steps * 0.04))
   const waterPercent = Math.min(100, (waterGlasses / WATER_GLASSES) * 100)
   const exercisePercent = Math.min(100, (exerciseMinutes / 30) * 100)
-
-  const openStepsEdit = () => {
-    setStepsInput(String(steps))
-    setEditingSteps(true)
-  }
 
   const handleSaveSteps = async () => {
     const val = parseInt(stepsInput, 10)
@@ -75,26 +70,22 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
     }
   }
 
-  const openExerciseEdit = () => {
-    setExMinutes('')
-    setEditingExercise(true)
-  }
-
   const handleSaveExercise = async () => {
     const mins = parseInt(exMinutes, 10)
-    if (isNaN(mins) || mins < 0) return
+    if (isNaN(mins) || mins <= 0) return
     setEditingExercise(false)
+
     const res = await upsertExercise(date, mins, exType)
-    if (res.error) toast.error(res.error)
-    else {
-      const calPerMin = { Walking: 4, Running: 10, Gym: 7, Cycling: 8 }[exType]
-      const addedCal = mins * calPerMin
-      const newExCal = exerciseCalories + addedCal
+    if ((res as any).error) {
+      toast.error((res as any).error)
+    } else {
+      // Dùng newCalories từ server — chính xác tuyệt đối
+      const newCal = (res as any).newCalories ?? (exerciseCalories + mins * { Walking: 4, Running: 10, Gym: 7, Cycling: 8 }[exType])
       setExerciseMinutes((p) => p + mins)
-      setExerciseCalories(newExCal)
+      setExerciseCalories(newCal)
       setExMinutes('')
       toast.success('Exercise logged!')
-      onUpdate?.(newExCal) // Truyen so moi len dashboard
+      onUpdate?.(newCal) // Báo lên dashboard số từ server
     }
   }
 
@@ -104,8 +95,8 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
 
       {/* Steps */}
       <div
-        className="glass-card rounded-[2rem] p-5 cursor-pointer transition-all duration-300"
-        onClick={() => !editingSteps && openStepsEdit()}
+        className="glass-card rounded-[2rem] p-5 cursor-pointer"
+        onClick={() => !editingSteps && (setStepsInput(String(steps)), setEditingSteps(true))}
       >
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-cyan-50 text-cyan-500 flex items-center justify-center">
@@ -119,16 +110,16 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
                   type="number"
                   value={stepsInput}
                   onChange={(e) => setStepsInput(e.target.value)}
-                  className="w-24 px-3 py-1.5 bg-slate-50 rounded-xl text-sm font-semibold border-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                  className="w-24 px-3 py-1.5 bg-slate-50 rounded-xl text-sm font-semibold focus:outline-none"
                   autoFocus
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveSteps()}
                 />
-                <button onClick={handleSaveSteps} className="text-xs font-bold text-emerald-600 hover:text-emerald-700">Save</button>
-                <button onClick={() => setEditingSteps(false)} className="text-xs font-bold text-slate-400 hover:text-slate-600">Cancel</button>
+                <button onClick={handleSaveSteps} className="text-xs font-bold text-emerald-600">Save</button>
+                <button onClick={() => setEditingSteps(false)} className="text-xs font-bold text-slate-400">Cancel</button>
               </div>
             ) : (
               <p className="text-sm text-slate-600 mt-0.5">
-                {steps.toLocaleString()} / {STEPS_GOAL.toLocaleString()} · ~{stepsCalories.toLocaleString()} kcal burned
+                {steps.toLocaleString()} / {STEPS_GOAL.toLocaleString()} · ~{stepsCalories} kcal
               </p>
             )}
           </div>
@@ -139,7 +130,7 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
       </div>
 
       {/* Water */}
-      <div className="glass-card rounded-[2rem] p-5 transition-all duration-300">
+      <div className="glass-card rounded-[2rem] p-5">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-500 flex items-center justify-center">
             <Droplets size={22} />
@@ -155,10 +146,9 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
               key={i}
               type="button"
               onClick={() => toggleWaterGlass(i)}
-              className={`w-8 h-8 rounded-lg transition-all duration-200 ${
+              className={`w-8 h-8 rounded-lg transition-all ${
                 i < waterGlasses ? 'bg-blue-400 text-white' : 'bg-slate-100 text-slate-300 hover:bg-slate-200'
               }`}
-              aria-label={`Glass ${i + 1}`}
             >
               <Droplets className="w-4 h-4 mx-auto" />
             </button>
@@ -171,8 +161,8 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
 
       {/* Exercise */}
       <div
-        className="glass-card rounded-[2rem] p-5 cursor-pointer transition-all duration-300"
-        onClick={() => !editingExercise && openExerciseEdit()}
+        className="glass-card rounded-[2rem] p-5 cursor-pointer"
+        onClick={() => !editingExercise && (setExMinutes(''), setEditingExercise(true))}
       >
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center">
@@ -188,12 +178,13 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
                     value={exMinutes}
                     onChange={(e) => setExMinutes(e.target.value)}
                     placeholder="Minutes"
-                    className="w-20 px-3 py-1.5 bg-slate-50 rounded-xl text-sm font-semibold border-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="w-20 px-3 py-1.5 bg-slate-50 rounded-xl text-sm font-semibold focus:outline-none"
+                    autoFocus
                   />
                   <select
                     value={exType}
                     onChange={(e) => setExType(e.target.value as ExerciseType)}
-                    className="px-3 py-1.5 bg-slate-50 rounded-xl text-sm font-semibold border-none focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+                    className="px-3 py-1.5 bg-slate-50 rounded-xl text-sm font-semibold focus:outline-none"
                   >
                     <option value="Walking">Walking</option>
                     <option value="Running">Running</option>
@@ -202,13 +193,13 @@ export function HabitCards({ date, initialHabits, onUpdate }: HabitCardsProps) {
                   </select>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={handleSaveExercise} className="text-xs font-bold text-emerald-600 hover:text-emerald-700">Save</button>
-                  <button onClick={() => setEditingExercise(false)} className="text-xs font-bold text-slate-400 hover:text-slate-600">Cancel</button>
+                  <button onClick={handleSaveExercise} className="text-xs font-bold text-emerald-600">Save</button>
+                  <button onClick={() => setEditingExercise(false)} className="text-xs font-bold text-slate-400">Cancel</button>
                 </div>
               </div>
             ) : (
               <p className="text-sm text-slate-600 mt-0.5">
-                {exerciseMinutes} min · {exerciseCalories} cal burned
+                {exerciseMinutes} min · {exerciseCalories} kcal burned
               </p>
             )}
           </div>
