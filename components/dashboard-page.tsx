@@ -312,8 +312,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <HabitCards
-            key={`habits-${date}`}
+          <HabitCards          
             date={date}
             initialHabits={habits}
             onUpdate={async () => await loadHabits(date)}
@@ -438,8 +437,7 @@ export default function DashboardPage() {
       {/* Habits + weekly + weight + monthly */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,2.1fr)_minmax(0,2.1fr)]">
         <div className="space-y-4">
-          <HabitCards
-            key={`habits2-${date}`}
+          <HabitCards            
             date={date}
             initialHabits={habits}
             onUpdate={async () => await loadHabits(date)}
