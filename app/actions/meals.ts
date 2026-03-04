@@ -29,7 +29,7 @@ export async function saveMeal(data: {
         fat: data.fat,
         image_url: data.imageUrl ?? null,
         logged_at: loggedAt,
-    } as never).select().single()
+    } as never).select().maybeSingle()
 
     if (error) return { error: error.message }
 
@@ -109,7 +109,7 @@ export async function relogMeal(meal: {
         fat: meal.fat,
         image_url: null,
         logged_at: today,
-    } as never).select().single()
+    } as never).select().maybeSingle()
 
     if (error) return { error: error.message }
 
@@ -133,7 +133,7 @@ export async function toggleFavorite(id: string) {
         .select('is_favorite')
         .eq('id', id)
         .eq('user_id', user.id)
-        .single()
+        .maybeSingle()
 
     const { error } = await supabase
         .from('meal_logs')
@@ -235,7 +235,7 @@ export async function updateMealNutrition(mealId: string, data: {
         } as never)
         .eq('id', mealId)
         .select()
-        .single()
+        .maybeSingle()
 
     if (updateError) return { error: updateError.message }
 
@@ -263,7 +263,12 @@ export async function updateMealNutrition(mealId: string, data: {
 
     return {
         success: true,
-        data: updatedMeal,
-        newTotals
+        data: JSON.parse(JSON.stringify(updatedMeal)),
+        newTotals: {
+            calories: Math.round(newTotals.calories),
+            protein: Math.round(newTotals.protein),
+            carbs: Math.round(newTotals.carbs),
+            fat: Math.round(newTotals.fat)
+        }
     }
 }
