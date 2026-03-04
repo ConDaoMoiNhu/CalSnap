@@ -19,12 +19,11 @@ interface MealCardProps {
         logged_at: string
         is_favorite?: boolean
     }
-}
-onToggleFavorite ?: (id: string) => void
-    onUpdate ?: (meal: any) => void
+    onToggleFavorite?: (id: string) => void
+    onUpdate?: (meal: any) => void
 }
 
-export function MealCard({ meal, onToggleFavorite }: MealCardProps) {
+export function MealCard({ meal, onToggleFavorite, onUpdate }: MealCardProps) {
     const [deleting, setDeleting] = useState(false)
     const [highlight, setHighlight] = useState(false)
     const [editingField, setEditingField] = useState<string | null>(null)

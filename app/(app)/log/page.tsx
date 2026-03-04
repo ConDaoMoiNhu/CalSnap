@@ -290,23 +290,25 @@ export default function LogPage() {
             ctaHref="/scan"
           />
         ) : (
-          <SwipeableMealCard
-            key={meal.id}
-            mealId={meal.id}
-            onDelete={() => handleDelete(meal.id, meal.food_name)}
-            onEdit={() => {
-              window.dispatchEvent(new CustomEvent('calsnap:meal-start-edit', {
-                detail: { mealId: meal.id }
-              }))
-            }}
-            className="relative"
-          >
-            <MealCard
-              meal={meal}
-              onToggleFavorite={handleToggleFavorite}
-              onUpdate={handleUpdateMeal}
-            />
-          </SwipeableMealCard>
+          meals.map((meal) => (
+            <SwipeableMealCard
+              key={meal.id}
+              mealId={meal.id}
+              onDelete={() => handleDelete(meal.id, meal.food_name)}
+              onEdit={() => {
+                window.dispatchEvent(new CustomEvent('calsnap:meal-start-edit', {
+                  detail: { mealId: meal.id }
+                }))
+              }}
+              className="relative"
+            >
+              <MealCard
+                meal={meal}
+                onToggleFavorite={handleToggleFavorite}
+                onUpdate={handleUpdateMeal}
+              />
+            </SwipeableMealCard>
+          ))
         )}
       </div>
 
