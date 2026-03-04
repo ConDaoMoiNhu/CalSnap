@@ -20,19 +20,12 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              // Scripts: self + inline (Next.js hydration) + Google APIs
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com",
-              // Styles: self + inline + Google Fonts
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com https://*.vercel.app",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              // Fonts
-              "font-src 'self' https://fonts.gstatic.com",
-              // Images: self + data URIs (for scan preview) + Supabase storage
-              "img-src 'self' data: blob: https://*.supabase.co",
-              // API connections: Supabase, Google AI, Gemini
+              "font-src 'self' data: https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://*.supabase.co https://*.vercel.app",
               "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://generativelanguage.googleapis.com https://accounts.google.com",
-              // Workers (SW)
               "worker-src 'self' blob:",
-              // Frames: Google OAuth popup
               "frame-src https://accounts.google.com",
             ].join("; "),
           },
