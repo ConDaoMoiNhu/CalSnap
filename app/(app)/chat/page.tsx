@@ -180,10 +180,10 @@ export default function ChatPage() {
       scale: 1,
       y: 0,
       filter: 'blur(0px)',
-      transition: { 
-        type: 'spring' as const, 
-        damping: 25, 
-        stiffness: 300 
+      transition: {
+        type: 'spring' as const,
+        damping: 25,
+        stiffness: 300
       }
     }
   }
@@ -305,6 +305,8 @@ export default function ChatPage() {
       return ''
     }
   }
+
+  if (pathname === '/chat') return null
 
   return (
     <div className="flex flex-col h-[calc(100dvh-3.5rem)] md:h-[calc(100vh-4rem)] w-full max-w-2xl mx-auto overflow-hidden bg-slate-50/50 dark:bg-slate-950/50 backdrop-blur-3xl animate-in fade-in duration-500">

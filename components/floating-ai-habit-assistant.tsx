@@ -51,7 +51,6 @@ export function AIAssistantWidget() {
   const fileRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  if (pathname === '/chat') return null
 
   const triggerHaptic = (style: 'light' | 'medium' | 'success' = 'light') => {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -208,6 +207,8 @@ export function AIAssistantWidget() {
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/\n/g, '<br />')
   }
+
+  if (pathname === '/chat') return null
 
   return (
     <>
