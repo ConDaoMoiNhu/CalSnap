@@ -21,12 +21,14 @@ export function SwipeableMealCard({ children, onDelete, onEdit, className = '', 
     const startX = useRef(0)
     const startOffset = useRef(0)
     const cardRef = useRef<HTMLDivElement>(null)
+    const hasVibrated = useRef(false)
 
     // ── Shared drag logic ──
     const onDragStart = useCallback((clientX: number) => {
         startX.current = clientX
         startOffset.current = offset
         setIsDragging(true)
+        hasVibrated.current = false
     }, [offset])
 
     const onDragMove = useCallback((clientX: number) => {
@@ -34,6 +36,17 @@ export function SwipeableMealCard({ children, onDelete, onEdit, className = '', 
         const delta = clientX - startX.current
         // Allow swiping between -100 (Delete) and 100 (Edit)
         const newOffset = Math.min(100, Math.max(-100, startOffset.current + delta))
+
+        // Haptic feedback when hitting the edge
+        if ((newOffset === 100 || newOffset === -100) && !hasVibrated.current) {
+            if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+                navigator.vibrate(10)
+            }
+            hasVibrated.current = true
+        } else if (newOffset > -100 && newOffset < 100) {
+            hasVibrated.current = false
+        }
+
         setOffset(newOffset)
     }, [isDragging])
 

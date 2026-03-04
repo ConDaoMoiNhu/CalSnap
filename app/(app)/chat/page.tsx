@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Sparkles, Send, Trash } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from '@/components/toast'
 
 type Message = { role: 'user' | 'assistant'; content: string; timestamp: string }
@@ -375,7 +376,7 @@ export default function ChatPage() {
             >
               <div className={`max-w-[85%] md:max-w-[80%] p-4 text-[15.5px] leading-relaxed break-words shadow-sm ${m.role === 'user'
                 ? 'ios-bubble-user'
-                : 'ios-bubble-ai text-slate-800 dark:text-slate-100'
+                : 'ios-bubble-ai text-slate-800 dark:text-100'
                 }`}>
                 {m.role === 'assistant' ? (
                   <div
@@ -454,6 +455,5 @@ export default function ChatPage() {
         </form>
       </div>
     </div>
-  )
   )
 }
