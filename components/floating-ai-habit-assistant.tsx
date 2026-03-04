@@ -6,6 +6,7 @@ import { Sparkles, Send, Paperclip, Trash, ChevronDown, MessageCircle, MoreVerti
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from '@/components/toast'
+import confetti from 'canvas-confetti'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -93,6 +94,14 @@ export function AIAssistantWidget() {
           onClick: () => {
             if (targetId) router.push(`/log?highlight=${targetId}`)
           }
+        })
+
+        // iOS Delight: Confetti on success
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#10b981', '#34d399', '#60a5fa']
         })
 
         const eventName = (type === 'LOG_WATER' || type === 'UPDATE_WATER') ? 'calsnap:water-updated' : 'calsnap:meal-updated'

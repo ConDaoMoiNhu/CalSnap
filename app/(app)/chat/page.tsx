@@ -161,6 +161,28 @@ export default function ChatPage() {
     }
   }, [loading, messages])
 
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.2
+      }
+    }
+  }
+
+  const messageVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 15, filter: 'blur(8px)' },
+    show: {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      filter: 'blur(0px)',
+      transition: { type: 'spring', damping: 20, stiffness: 200 }
+    }
+  }
+
   const handleAction = async (type: string, data: any) => {
     setLoading(true)
     try {
