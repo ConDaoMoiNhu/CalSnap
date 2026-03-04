@@ -23,6 +23,12 @@ export function SwipeableMealCard({ children, onDelete, onEdit, className = '', 
     const cardRef = useRef<HTMLDivElement>(null)
     const hasVibrated = useRef(false)
 
+    const triggerHaptic = () => {
+        if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+            navigator.vibrate([15])
+        }
+    }
+
     // ── Shared drag logic ──
     const onDragStart = useCallback((clientX: number) => {
         startX.current = clientX
