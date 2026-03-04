@@ -35,13 +35,25 @@ export function MobileBottomNav() {
               const isActive = pathname === href
               const isCenter = href === '/scan'
 
+              const handleClick = (e: React.MouseEvent) => {
+                if (isActive) {
+                  e.preventDefault()
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                  // Small feedback
+                  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
+                    navigator.vibrate([10])
+                  }
+                }
+              }
+
               return (
                 <Link
                   key={href}
                   href={href}
+                  onClick={handleClick}
                   aria-label={label}
                   className={cn(
-                    'flex-1 flex flex-col items-center justify-end h-12 relative ios-tap transition-all',
+                    'flex-1 flex flex-col items-center justify-end h-14 relative ios-tap transition-all',
                     isActive ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
                   )}
                 >
@@ -58,7 +70,7 @@ export function MobileBottomNav() {
                   </span>
 
                   <span className={cn(
-                    'text-[10px] font-black uppercase tracking-tighter transition-opacity duration-300',
+                    'text-[10px] font-black uppercase tracking-tighter transition-opacity duration-300 pb-1',
                     isCenter ? 'opacity-0 h-0 w-0 overflow-hidden' : 'opacity-100'
                   )}>
                     {label}
