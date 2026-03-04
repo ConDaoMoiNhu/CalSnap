@@ -228,7 +228,7 @@ export function MealCard({ meal, onToggleFavorite, onUpdate }: MealCardProps) {
                                                 onChange={e => handleMacroChange(macro.field as 'protein' | 'carbs' | 'fat', e.target.value)}
                                                 className={`w-full bg-${macro.color}-50/30 dark:bg-${macro.color}-900/10 text-sm font-bold text-${macro.color}-600 dark:text-${macro.color}-400 px-3 py-2.5 rounded-xl border border-${macro.color}-100 dark:border-${macro.color}-900/30 focus:outline-none`}
                                             />
-                                            <DiffIndicator val={editData[macro.field as keyof typeof editData] ?? 0} original={meal[macro.field as keyof typeof meal] ?? 0} unit="g" />
+                                            <DiffIndicator val={Number(editData[macro.field as keyof typeof editData]) ?? 0} original={Number(meal[macro.field as keyof typeof meal]) ?? 0} unit="g" />
                                         </div>
                                     </div>
                                 ))}

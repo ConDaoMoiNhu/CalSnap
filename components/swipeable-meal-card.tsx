@@ -142,9 +142,8 @@ export function SwipeableMealCard({ children, onDelete, onEdit, className = '', 
             id={mealId ? `meal-${mealId}` : undefined}
             className={`relative overflow-hidden rounded-[2rem] group/swipe transition-all duration-500 ${className}`}
         >
-            {/* Edit Button (Revealed on Swipe Right) - sits at LEFT */}
             <div
-                className="absolute inset-y-0 left-0 flex items-center justify-start w-[100px] z-10"
+                className="absolute inset-y-0 left-0 flex items-center justify-start w-[100px] z-30"
                 style={{ opacity: Math.max(0, offset / 80) }}
             >
                 <button
@@ -165,7 +164,7 @@ export function SwipeableMealCard({ children, onDelete, onEdit, className = '', 
 
             {/* Delete Button (Revealed on Swipe Left) - sits at RIGHT */}
             <div
-                className="absolute inset-y-0 right-0 flex items-center justify-end w-[100px] z-10"
+                className="absolute inset-y-0 right-0 flex items-center justify-end w-[100px] z-30"
                 style={{ opacity: Math.max(0, -offset / 80) }}
             >
                 <button

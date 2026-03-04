@@ -37,8 +37,14 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
         setOpen(false)
       }
     }
-    if (open) document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    if (open) {
+      document.addEventListener('mousedown', handleClickOutside)
+      document.addEventListener('touchstart', handleClickOutside)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
   }, [open])
 
   const formatDisplay = (d: string) => {
