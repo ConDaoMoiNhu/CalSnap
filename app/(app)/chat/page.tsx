@@ -307,8 +307,6 @@ export default function ChatPage() {
     }
   }
 
-  if (pathname === '/chat') return null
-
   return (
     <div className="fixed inset-0 top-14 md:top-16 bottom-[4.5rem] md:bottom-0 left-0 right-0 z-[40] md:max-w-2xl md:mx-auto bg-slate-50 dark:bg-slate-950 flex flex-col overflow-hidden animate-in fade-in duration-300">
 
