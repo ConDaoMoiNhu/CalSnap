@@ -127,7 +127,8 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-2 z-50 glass-card rounded-[2rem] p-4 border border-white/40 shadow-xl overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-3 z-[100] bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-2xl border border-slate-200/50 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 ios-blur -z-10 rounded-[2rem]" />
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -138,7 +139,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <span className="font-bold text-slate-800 text-sm">
+            <span className="font-extrabold text-slate-900 dark:text-white text-base tracking-tight">
               {MONTHS_VI[viewDate.getMonth()]} {viewDate.getFullYear()}
             </span>
             <button
@@ -155,7 +156,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
           {/* Weekday headers */}
           <div className="grid grid-cols-7 gap-1 mb-2">
             {DAYS_VI.map((day) => (
-              <div key={day} className="text-center text-xs font-semibold text-slate-500 py-1">
+              <div key={day} className="text-center text-[11px] font-black text-slate-400 dark:text-slate-500 py-1 uppercase tracking-widest">
                 {day}
               </div>
             ))}
@@ -173,15 +174,18 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
                   onClick={() => selectDate(date)}
                   disabled={disabled}
                   className={cn(
-                    'aspect-square rounded-xl text-sm font-semibold transition-all min-w-[36px] min-h-[36px] flex items-center justify-center',
-                    disabled && 'opacity-40 cursor-not-allowed',
-                    isSelected && 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/25',
-                    !isSelected && !disabled && 'hover:bg-slate-100 text-slate-800',
-                    !isCurrent && !isSelected && 'text-slate-400',
-                    isTodayDate && !isSelected && !disabled && 'ring-2 ring-emerald-300 ring-offset-2'
+                    'aspect-square rounded-xl text-sm font-bold transition-all min-w-[38px] min-h-[38px] flex items-center justify-center relative',
+                    disabled && 'opacity-20 cursor-not-allowed',
+                    isSelected && 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/25 scale-110 z-10',
+                    !isSelected && !disabled && 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200',
+                    !isCurrent && !isSelected && 'text-slate-300 dark:text-slate-600',
+                    isTodayDate && !isSelected && !disabled && 'text-emerald-600 dark:text-emerald-400'
                   )}
                 >
                   {date.getDate()}
+                  {isTodayDate && !isSelected && (
+                    <div className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-500" />
+                  )}
                 </button>
               )
             })}

@@ -44,8 +44,20 @@ export function MealCard({ meal, onToggleFavorite }: MealCardProps) {
             }
         }
         window.addEventListener('calsnap:meal-highlight', handler)
-        return () => window.removeEventListener('calsnap:meal-highlight', handler)
-    }, [meal.id, meal.food_name])
+
+        const editHandler = (e: Event) => {
+            const detail = (e as CustomEvent).detail
+            if (detail?.mealId === meal.id) {
+                startEditing('calories', meal.calories)
+            }
+        }
+        window.addEventListener('calsnap:meal-start-edit', editHandler)
+
+        return () => {
+            window.removeEventListener('calsnap:meal-highlight', handler)
+            window.removeEventListener('calsnap:meal-start-edit', editHandler)
+        }
+    }, [meal.id, meal.food_name, meal.calories])
 
     const startEditing = (field: string, value: number | string) => {
         setEditingField(field)

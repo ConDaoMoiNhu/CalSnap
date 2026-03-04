@@ -1,11 +1,12 @@
 'use client'
 
 import { useRef, useState, useCallback, useEffect } from 'react'
-import { Trash, Loader2 } from 'lucide-react'
+import { Trash, Loader2, Pencil } from 'lucide-react'
 
 interface Props {
     children: React.ReactNode
     onDelete: () => void | Promise<void>
+    onEdit?: () => void
     className?: string
     mealId?: string
 }
@@ -31,8 +32,8 @@ export function SwipeableMealCard({ children, onDelete, className = '', mealId }
     const onDragMove = useCallback((clientX: number) => {
         if (!isDragging) return
         const delta = clientX - startX.current
-        // Allow swiping between -120 and 0
-        const newOffset = Math.min(0, Math.max(-120, startOffset.current + delta))
+        // Allow swiping between -160 and 0
+        const newOffset = Math.min(0, Math.max(-160, startOffset.current + delta))
         setOffset(newOffset)
     }, [isDragging])
 
@@ -40,9 +41,9 @@ export function SwipeableMealCard({ children, onDelete, className = '', mealId }
         if (!isDragging) return
         setIsDragging(false)
 
-        // If we swiped left past threshold OR we were open and didn't swipe right enough
+        // If we swiped left past threshold
         if (offset < -SWIPE_THRESHOLD) {
-            setOffset(-100)
+            setOffset(-160) // Show both buttons
             setIsOpen(true)
         } else {
             setOffset(0)
@@ -111,16 +112,32 @@ export function SwipeableMealCard({ children, onDelete, className = '', mealId }
             id={mealId ? `meal-${mealId}` : undefined}
             className={`relative overflow-hidden rounded-[2rem] group/swipe transition-all duration-500 ${className}`}
         >
-            {/* Delete button revealed on swipe — sits at z-10 */}
-            <div className="absolute inset-y-0 right-0 flex items-center justify-end w-[100px] bg-red-600 dark:bg-red-500 rounded-r-[2rem] z-10">
+            {/* Buttons revealed on swipe */}
+            <div className="absolute inset-y-0 right-0 flex items-center justify-end w-[160px] rounded-r-[2rem] z-10 overflow-hidden">
+                {/* Edit Button */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation()
+                        setOffset(0)
+                        setIsOpen(false)
+                        onEdit?.()
+                    }}
+                    className="flex flex-col items-center justify-center h-full w-1/2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 transition-colors active:bg-slate-200"
+                >
+                    <div className="w-9 h-9 rounded-full bg-slate-200/50 dark:bg-slate-700/50 flex items-center justify-center mb-0.5">
+                        <Pencil className="h-4.5 w-4.5" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider">Sửa</span>
+                </button>
+
+                {/* Delete Button */}
                 <button
                     onClick={(e) => {
                         e.stopPropagation()
                         handleDelete()
                     }}
                     disabled={deleting}
-                    aria-label="Xóa bữa ăn"
-                    className="flex flex-col items-center justify-center h-full w-full pr-2 gap-1 text-white disabled:opacity-70 transition-colors active:bg-red-700"
+                    className="flex flex-col items-center justify-center h-full w-1/2 bg-red-600 dark:bg-red-500 text-white disabled:opacity-70 transition-colors active:bg-red-700"
                 >
                     {deleting ? (
                         <Loader2 className="h-5 w-5 animate-spin" />

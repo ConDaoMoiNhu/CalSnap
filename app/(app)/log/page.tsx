@@ -289,6 +289,11 @@ export default function LogPage() {
               key={meal.id}
               mealId={meal.id}
               onDelete={() => handleDelete(meal.id, meal.food_name)}
+              onEdit={() => {
+                window.dispatchEvent(new CustomEvent('calsnap:meal-start-edit', {
+                  detail: { mealId: meal.id }
+                }))
+              }}
               className="relative"
             >
               <MealCard meal={meal} onToggleFavorite={handleToggleFavorite} />
