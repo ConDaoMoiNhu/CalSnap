@@ -251,7 +251,7 @@ export function AIAssistantWidget() {
 
                   {messages.map((m, i) => (
                     <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <div className={`max-w-[85%] px-4 py-3 text-sm rounded-2xl break-words break-all ${m.role === 'user' ? 'bg-emerald-500 text-white rounded-br-sm' : 'bg-slate-900 text-slate-100 rounded-bl-sm border border-slate-800'}`}>
+                      <div className={`max-w-[85%] px-4 py-3 text-sm rounded-2xl break-words ${m.role === 'user' ? 'bg-emerald-500 text-white rounded-br-sm' : 'bg-slate-900 text-slate-100 rounded-bl-sm border border-slate-800'}`}>
                         {m.image && <img src={m.image} alt="" className="w-32 rounded-xl mb-2 object-cover" />}
                         <p className="whitespace-pre-wrap">{m.content}</p>
                         {m.role === 'assistant' && pendingAction?.messageIndex === i && (
