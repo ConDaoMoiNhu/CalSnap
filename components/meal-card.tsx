@@ -14,7 +14,7 @@ interface MealCardProps {
         calories: number
         protein: number
         carbs: number
-        fat: number
+        fats: number
         created_at: string
         logged_at: string
         is_favorite?: boolean
@@ -32,7 +32,7 @@ export function MealCard({ meal, onToggleFavorite, onUpdate }: MealCardProps) {
         calories: meal.calories,
         protein: meal.protein,
         carbs: meal.carbs,
-        fat: meal.fat
+        fats: meal.fats
     })
 
     const triggerHaptic = (duration = 10) => {
@@ -67,7 +67,7 @@ export function MealCard({ meal, onToggleFavorite, onUpdate }: MealCardProps) {
             calories: meal.calories,
             protein: meal.protein,
             carbs: meal.carbs,
-            fat: meal.fat
+            fats: meal.fats
         })
         setIsEditing(true)
         triggerHaptic(15)
@@ -92,21 +92,27 @@ export function MealCard({ meal, onToggleFavorite, onUpdate }: MealCardProps) {
         })
     }
 
-    const handleMacroChange = (field: 'protein' | 'carbs' | 'fat', val: string) => {
+    const handleMacroChange = (field: 'protein' | 'carbs' | 'fats', val: string) => {
         const num = Math.max(0, Math.round(Number(val)))
         setEditData(prev => ({ ...prev, [field]: num }))
     }
 
     const saveEdit = async () => {
         if (isSaving) return
-        if (editData.calories < 0 || editData.protein < 0 || editData.carbs < 0 || editData.fat < 0) {
+        if (editData.calories < 0 || editData.protein < 0 || editData.carbs < 0 || editData.fats < 0) {
             toast.error('Giá trị không được âm!')
             return
         }
 
         setIsSaving(true)
         try {
-            const res = await updateMealNutrition(meal.id, editData)
+            // Map 'fats' back to 'fat' for the action input if needed, 
+            // but let's check the action signature first.
+            // Based on my change to meals.ts, the action expects 'fat'.
+            const res = await updateMealNutrition(meal.id, {
+                ...editData,
+                fat: editData.fats
+            })
             if (res.success) {
                 triggerHaptic(20)
                 setIsEditing(false)

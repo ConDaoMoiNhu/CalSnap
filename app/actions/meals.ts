@@ -230,7 +230,7 @@ export async function updateMealNutrition(mealId: string, data: {
             calories: Math.round(Number(data.calories)),
             protein: Math.round(Number(data.protein)),
             carbs: Math.round(Number(data.carbs)),
-            fat: Math.round(Number(data.fat)),
+            fats: Math.round(Number(data.fat)),
             food_name: data.food_name || undefined
         } as never)
         .eq('id', mealId)
@@ -250,7 +250,7 @@ export async function updateMealNutrition(mealId: string, data: {
         calories: acc.calories + (m.calories || 0),
         protein: acc.protein + (m.protein || 0),
         carbs: acc.carbs + (m.carbs || 0),
-        fat: acc.fat + (m.fat || 0),
+        fat: acc.fat + (m.fats || 0),
     }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
 
     // 4. Update adherence/progress
