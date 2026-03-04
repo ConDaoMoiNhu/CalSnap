@@ -29,8 +29,8 @@ export function MobileBottomNav() {
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 10px)' }}
       >
         <div className="relative max-w-xs w-full flex justify-center px-4">
-          {/* Dark pill */}
-          <div className="w-full bg-slate-950/90 backdrop-blur-2xl rounded-full px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.6)] border border-white/10 flex items-center justify-between gap-1">
+          {/* Dark pill - Ultra Premium Glass */}
+          <div className="w-full ios-glass ios-shadow rounded-full px-2 py-2 flex items-center justify-around gap-1 border-white/5 dark:border-white/10 relative overflow-visible">
             {navItems.map(({ href, label, icon: Icon }) => {
               const isActive = pathname === href
               const isCenter = href === '/scan'
@@ -41,26 +41,32 @@ export function MobileBottomNav() {
                   href={href}
                   aria-label={label}
                   className={cn(
-                    'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-semibold text-white/60 ios-tap',
-                    isCenter && 'relative active:scale-95 transition-transform'
+                    'flex-1 flex flex-col items-center justify-end h-12 relative ios-tap transition-all',
+                    isActive ? 'text-emerald-500 dark:text-emerald-400' : 'text-slate-400 dark:text-slate-500'
                   )}
                 >
                   <span
                     className={cn(
-                      'flex items-center justify-center rounded-full transition-all',
+                      'flex items-center justify-center rounded-full transition-all duration-300',
                       isCenter
-                        ? 'w-[52px] h-[52px] -mt-7 hoverboard-gradient text-white shadow-[0_10px_30px_rgba(46,125,50,0.45)]'
-                        : 'w-8 h-8',
-                      !isCenter &&
-                      (isActive ? 'bg-emerald-500/20 text-emerald-400' : 'text-white/60')
+                        ? 'w-14 h-14 -mt-10 hoverboard-gradient text-white shadow-lg shadow-emerald-500/25 border-4 border-slate-50 dark:border-slate-900 mb-5'
+                        : 'w-8 h-8 mb-1',
+                      !isCenter && isActive && 'bg-emerald-500/15'
                     )}
                   >
-                    <Icon className={cn('h-4 w-4', isCenter && 'h-5 w-5')} />
+                    <Icon className={cn(isCenter ? 'h-6 w-6' : 'h-4.5 w-4.5')} />
                   </span>
-                  {!isCenter && (
-                    <span className={cn(isActive ? 'text-emerald-400' : 'text-white/50')}>
-                      {label}
-                    </span>
+
+                  <span className={cn(
+                    'text-[10px] font-black uppercase tracking-tighter transition-opacity duration-300',
+                    isCenter ? 'opacity-0 h-0 w-0 overflow-hidden' : 'opacity-100'
+                  )}>
+                    {label}
+                  </span>
+
+                  {/* Dot indicator for active state (optional but premium) */}
+                  {isActive && !isCenter && (
+                    <div className="absolute -bottom-1 w-1 h-1 rounded-full bg-emerald-500" />
                   )}
                 </Link>
               )
