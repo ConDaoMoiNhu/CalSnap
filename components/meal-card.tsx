@@ -19,7 +19,9 @@ interface MealCardProps {
         logged_at: string
         is_favorite?: boolean
     }
-    onToggleFavorite?: (id: string) => void
+}
+onToggleFavorite ?: (id: string) => void
+    onUpdate ?: (meal: any) => void
 }
 
 export function MealCard({ meal, onToggleFavorite }: MealCardProps) {
@@ -92,10 +94,16 @@ export function MealCard({ meal, onToggleFavorite }: MealCardProps) {
             if (res.success) {
                 console.log('[Edit] Success:', res.data)
                 triggerHaptic()
+
+                // CRITICAL: Update parent state immediately before closing edit mode
+                if (onUpdate && res.data) {
+                    onUpdate(res.data)
+                }
+
                 setEditingField(null)
                 toast.success('Đã cập nhật số liệu! ✨')
 
-                // Notify parent to refresh totals with accurate date
+                // Notify system of update
                 window.dispatchEvent(new CustomEvent('calsnap:meal-updated', {
                     detail: { date: meal.logged_at }
                 }))
@@ -154,9 +162,10 @@ export function MealCard({ meal, onToggleFavorite }: MealCardProps) {
                                 <input
                                     autoFocus
                                     type="number"
-                                    inputMode="decimal"
+                                    inputMode="numeric"
                                     value={editValue}
                                     onChange={e => setEditValue(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && saveEdit()}
                                     className="w-16 bg-transparent text-sm font-bold text-emerald-600 dark:text-emerald-400 focus:outline-none"
                                 />
                                 <div className="flex items-center gap-1 border-l border-emerald-200 dark:border-emerald-800/50 ml-1 pl-1">
@@ -230,8 +239,10 @@ function MacroEditable({
                 <input
                     autoFocus
                     type="number"
+                    inputMode="numeric"
                     value={editValue}
                     onChange={e => setEditValue(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && onSave()}
                     className={cn('w-10 bg-transparent text-xs font-bold focus:outline-none', badgeProps.color)}
                 />
                 <div className="flex items-center gap-0.5">

@@ -154,6 +154,12 @@ export default function LogPage() {
     }
   }
 
+  const handleUpdateMeal = (updatedMeal: Meal) => {
+    setMeals(prev => prev.map(m => m.id === updatedMeal.id ? updatedMeal : m))
+    // Also update recent meals if it's in there
+    setRecentMeals(prev => prev.map(m => m.id === updatedMeal.id ? updatedMeal : m))
+  }
+
   return (
     <div className="space-y-6 max-w-lg mx-auto page-enter pb-40">
       <div className="-mx-4 md:-mx-8 nutri-header">
@@ -284,21 +290,23 @@ export default function LogPage() {
             ctaHref="/scan"
           />
         ) : (
-          meals.map((meal) => (
-            <SwipeableMealCard
-              key={meal.id}
-              mealId={meal.id}
-              onDelete={() => handleDelete(meal.id, meal.food_name)}
-              onEdit={() => {
-                window.dispatchEvent(new CustomEvent('calsnap:meal-start-edit', {
-                  detail: { mealId: meal.id }
-                }))
-              }}
-              className="relative"
-            >
-              <MealCard meal={meal} onToggleFavorite={handleToggleFavorite} />
-            </SwipeableMealCard>
-          ))
+          <SwipeableMealCard
+            key={meal.id}
+            mealId={meal.id}
+            onDelete={() => handleDelete(meal.id, meal.food_name)}
+            onEdit={() => {
+              window.dispatchEvent(new CustomEvent('calsnap:meal-start-edit', {
+                detail: { mealId: meal.id }
+              }))
+            }}
+            className="relative"
+          >
+            <MealCard
+              meal={meal}
+              onToggleFavorite={handleToggleFavorite}
+              onUpdate={handleUpdateMeal}
+            />
+          </SwipeableMealCard>
         )}
       </div>
 
