@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Home, BookOpen, Zap, MessageCircle, ClipboardList } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +15,7 @@ const navItems = [
 
 export function MobileBottomNav() {
   const pathname = usePathname()
+  const router = useRouter()
 
   return (
     <>
@@ -39,9 +40,16 @@ export function MobileBottomNav() {
                 if (isActive) {
                   e.preventDefault()
                   window.scrollTo({ top: 0, behavior: 'smooth' })
-                  // Small feedback
+                  router.refresh()
+                  // Advanced double-tap Haptic feedback like iOS
                   if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-                    navigator.vibrate([10])
+                    // Start refreshing with a subtle tap
+                    navigator.vibrate([10]);
+
+                    // Simulate completion of scroll/refresh with a slightly firmer tap
+                    setTimeout(() => {
+                      try { navigator.vibrate([15]); } catch (e) { }
+                    }, 400); // 400ms is approx duration of smooth scroll to top
                   }
                 }
               }

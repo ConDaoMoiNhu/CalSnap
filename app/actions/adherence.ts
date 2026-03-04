@@ -2,6 +2,11 @@
 
 import { createClient } from '@/lib/supabase/server'
 
+// ✅ Helper: local date
+function localDate(date?: Date) {
+  return (date ?? new Date()).toLocaleDateString('en-CA')
+}
+
 function calcScore(goal: number, actual: number): number {
   if (goal === 0) return 100
   const ratio = actual / goal
@@ -14,9 +19,7 @@ function calcScore(goal: number, actual: number): number {
 
 export async function updateDailyAdherence(date: string) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const { data: profile } = await supabase
@@ -51,9 +54,7 @@ export async function updateDailyAdherence(date: string) {
     calcScore(plan.daily_carbs_g, actual.carbs),
     calcScore(plan.daily_fat_g, actual.fat),
   ]
-  const overallScore = Math.round(
-    scores.reduce((a: number, b: number) => a + b, 0) / scores.length
-  )
+  const overallScore = Math.round(scores.reduce((a: number, b: number) => a + b, 0) / scores.length)
   const isOnTrack = overallScore >= 70
 
   await supabase.from('plan_adherence').upsert(
@@ -81,9 +82,7 @@ export async function updateDailyAdherence(date: string) {
 
 export async function getAdherenceData(date: string) {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const sevenDaysAgo = new Date()
@@ -93,7 +92,7 @@ export async function getAdherenceData(date: string) {
     .from('plan_adherence')
     .select('*')
     .eq('user_id', user.id)
-    .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+    .gte('date', localDate(sevenDaysAgo)) // ✅ local date
     .order('date', { ascending: true })
 
   const history = (data ?? []) as any[]
@@ -106,12 +105,10 @@ export async function getAdherenceData(date: string) {
 
 export async function updateJourneyProgress() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = localDate() // ✅ local date
   const adherence = await getAdherenceData(today)
   if (!adherence) return
 
@@ -134,9 +131,7 @@ export async function updateJourneyProgress() {
 
 export async function getWeeklyReport() {
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
   const sevenDaysAgo = new Date()
@@ -146,45 +141,25 @@ export async function getWeeklyReport() {
     .from('plan_adherence')
     .select('*')
     .eq('user_id', user.id)
-    .gte('date', sevenDaysAgo.toISOString().split('T')[0])
+    .gte('date', localDate(sevenDaysAgo)) // ✅ local date
     .order('date', { ascending: true })
 
   const history = (data ?? []) as any[]
   if (history.length === 0) return null
 
   const onTrackDays = history.filter((d) => d.is_on_track).length
-  const avgScore = Math.round(
-    history.reduce((s, d) => s + d.adherence_score, 0) / history.length
-  )
-  const avgCalories = Math.round(
-    history.reduce((s, d) => s + d.calories_actual, 0) / history.length
-  )
-  const avgProtein = Math.round(
-    history.reduce((s, d) => s + d.protein_actual, 0) / history.length
-  )
+  const avgScore = Math.round(history.reduce((s, d) => s + d.adherence_score, 0) / history.length)
+  const avgCalories = Math.round(history.reduce((s, d) => s + d.calories_actual, 0) / history.length)
+  const avgProtein = Math.round(history.reduce((s, d) => s + d.protein_actual, 0) / history.length)
   const caloriesGoal = history[0]?.calories_goal ?? 2000
   const proteinGoal = history[0]?.protein_goal ?? 150
 
   const weakPoints: string[] = []
-  const avgProteinPct =
-    proteinGoal > 0 ? Math.round((avgProtein / proteinGoal) * 100) : 100
-  if (avgProteinPct < 80)
-    weakPoints.push(`Protein (chỉ đạt ${avgProteinPct}% TB)`)
+  const avgProteinPct = proteinGoal > 0 ? Math.round((avgProtein / proteinGoal) * 100) : 100
+  if (avgProteinPct < 80) weakPoints.push(`Protein (chỉ đạt ${avgProteinPct}% TB)`)
   const avgCalPct = Math.round((avgCalories / caloriesGoal) * 100)
-  if (avgCalPct > 115)
-    weakPoints.push(`Calories dư (${avgCalPct}% TB)`)
-  if (avgCalPct < 85)
-    weakPoints.push(`Calories thiếu (${avgCalPct}% TB)`)
+  if (avgCalPct > 115) weakPoints.push(`Calories dư (${avgCalPct}% TB)`)
+  if (avgCalPct < 85) weakPoints.push(`Calories thiếu (${avgCalPct}% TB)`)
 
-  return {
-    onTrackDays,
-    avgScore,
-    avgCalories,
-    avgProtein,
-    caloriesGoal,
-    proteinGoal,
-    weakPoints,
-    history,
-  }
+  return { onTrackDays, avgScore, avgCalories, avgProtein, caloriesGoal, proteinGoal, weakPoints, history }
 }
-

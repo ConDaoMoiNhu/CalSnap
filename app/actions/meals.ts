@@ -1,9 +1,13 @@
-// app/actions/meals.ts
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { updateDailyAdherence, updateJourneyProgress } from './adherence'
+
+// ✅ Helper: local date tránh UTC shift
+function localDate(date?: Date) {
+    return (date ?? new Date()).toLocaleDateString('en-CA') // YYYY-MM-DD
+}
 
 export async function saveMeal(data: {
     foodName: string
@@ -18,7 +22,7 @@ export async function saveMeal(data: {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { error: 'Not authenticated' }
 
-    const loggedAt = data.loggedAt ?? new Date().toISOString().split('T')[0]
+    const loggedAt = data.loggedAt ?? localDate() // ✅
 
     const { data: record, error } = await supabase.from('meal_logs').insert({
         user_id: user.id,
@@ -59,8 +63,6 @@ export async function deleteMeal(id: string) {
     return { success: true }
 }
 
-// Nếu date = 'recent' → trả 10 meal gần nhất (cho QuickRelog)
-// Nếu date = YYYY-MM-DD → trả meal của ngày đó
 export async function getMealsForDate(date: string) {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -86,7 +88,6 @@ export async function getMealsForDate(date: string) {
     return (data as any[]) ?? []
 }
 
-// Log lại 1 meal cũ với ngày hôm nay
 export async function relogMeal(meal: {
     food_name: string
     calories: number
@@ -98,7 +99,7 @@ export async function relogMeal(meal: {
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { error: 'Not authenticated' }
 
-    const today = new Date().toISOString().split('T')[0]
+    const today = localDate() // ✅
 
     const { data: record, error } = await supabase.from('meal_logs').insert({
         user_id: user.id,
@@ -121,13 +122,11 @@ export async function relogMeal(meal: {
     return { success: true, data: record }
 }
 
-// Toggle is_favorite cho 1 meal
 export async function toggleFavorite(id: string) {
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) return { error: 'Not authenticated' }
 
-    // Lấy giá trị hiện tại
     const { data: meal } = await supabase
         .from('meal_logs')
         .select('is_favorite')
@@ -160,8 +159,8 @@ export async function getWeeklyCalories() {
         .from('meal_logs')
         .select('logged_at, calories')
         .eq('user_id', user.id)
-        .gte('logged_at', startDate.toISOString().split('T')[0])
-        .lte('logged_at', endDate.toISOString().split('T')[0])
+        .gte('logged_at', localDate(startDate)) // ✅
+        .lte('logged_at', localDate(endDate))   // ✅
 
     if (!data) return []
 
@@ -169,7 +168,7 @@ export async function getWeeklyCalories() {
     for (let i = 6; i >= 0; i--) {
         const d = new Date()
         d.setDate(d.getDate() - i)
-        grouped[d.toISOString().split('T')[0]] = 0
+        grouped[localDate(d)] = 0 // ✅
     }
 
     ; (data as any[]).forEach((row) => {
@@ -177,10 +176,9 @@ export async function getWeeklyCalories() {
     })
 
     return Object.entries(grouped).map(([date, calories]) => ({
-        date, // giữ nguyên YYYY-MM-DD
+        date,
         calories,
         label: new Date(date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short' }),
-
     }))
 }
 
@@ -199,76 +197,83 @@ export async function updateCalorieGoal(goal: number) {
     revalidatePath('/profile')
     return { success: true }
 }
-export async function updateMealNutrition(mealId: string, data: {
-    calories: number
-    protein: number
-    carbs: number
-    fat: number
-    food_name?: string
-}) {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) return { error: 'Not authenticated' }
 
-    // 1. Verify ownership
-    const { data: existingMeal } = await supabase
-        .from('meal_logs')
-        .select('logged_at, user_id')
-        .eq('id', mealId)
-        .maybeSingle()
-
-    if (!existingMeal || existingMeal.user_id !== user.id) {
-        return { error: 'Meal not found or permission denied' }
+export async function updateMealNutrition(
+    mealId: string,
+    data: {
+        calories: number
+        protein: number
+        carbs: number
+        fat: number
+        food_name?: string
     }
+) {
+    try {
+        const supabase = await createClient()
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) return { error: 'Not authenticated' }
 
-    const date = existingMeal.logged_at
+        const { data: existingMeal, error: fetchError } = await supabase
+            .from('meal_logs')
+            .select('id, logged_at, user_id')
+            .eq('id', mealId)
+            .eq('user_id', user.id)
+            .maybeSingle()
 
-    // 2. Update meal_logs
-    const { data: updatedMeal, error: updateError } = await supabase
-        .from('meal_logs')
-        .update({
-            calories: Math.round(Number(data.calories)),
-            protein: Math.round(Number(data.protein)),
-            carbs: Math.round(Number(data.carbs)),
-            fat: Math.round(Number(data.fat)),
-            food_name: data.food_name || undefined
-        } as never)
-        .eq('id', mealId)
-        .select()
-        .maybeSingle()
+        if (fetchError) return { error: fetchError.message }
+        if (!existingMeal) return { error: 'Meal not found or permission denied' }
 
-    if (updateError) return { error: updateError.message }
+        const date = existingMeal.logged_at
+        const calories = Math.round(Number(data.calories))
+        const protein = Math.round(Number(data.protein))
+        const carbs = Math.round(Number(data.carbs))
+        const fat = Math.round(Number(data.fat))
 
-    // 3. Calculate new totals for the day
-    const { data: dayMeals } = await supabase
-        .from('meal_logs')
-        .select('calories, protein, carbs, fat')
-        .eq('user_id', user.id)
-        .eq('logged_at', date)
+        const updatePayload: Record<string, number | string> = { calories, protein, carbs, fat }
+        if (data.food_name) updatePayload.food_name = data.food_name
 
-    const newTotals = (dayMeals || []).reduce((acc, m) => ({
-        calories: acc.calories + (m.calories || 0),
-        protein: acc.protein + (m.protein || 0),
-        carbs: acc.carbs + (m.carbs || 0),
-        fat: acc.fat + (m.fat || 0),
-    }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
+        const { error: updateError } = await supabase
+            .from('meal_logs')
+            .update(updatePayload)
+            .eq('id', mealId)
+            .eq('user_id', user.id)
 
-    // 4. Update adherence/progress
-    await updateDailyAdherence(date)
-    await updateJourneyProgress()
+        if (updateError) return { error: updateError.message }
 
-    // 5. Revalidate
-    revalidatePath('/log')
-    revalidatePath('/')
+        const { data: dayMeals } = await supabase
+            .from('meal_logs')
+            .select('calories, protein, carbs, fat')
+            .eq('user_id', user.id)
+            .eq('logged_at', date)
 
-    return {
-        success: true,
-        data: JSON.parse(JSON.stringify(updatedMeal)),
-        newTotals: {
-            calories: Math.round(newTotals.calories),
-            protein: Math.round(newTotals.protein),
-            carbs: Math.round(newTotals.carbs),
-            fat: Math.round(newTotals.fat)
+        const newTotals = (dayMeals ?? []).reduce(
+            (acc, m) => ({
+                calories: acc.calories + (Number(m.calories) || 0),
+                protein: acc.protein + (Number(m.protein) || 0),
+                carbs: acc.carbs + (Number(m.carbs) || 0),
+                fat: acc.fat + (Number(m.fat) || 0),
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        )
+
+        await updateDailyAdherence(date)
+        await updateJourneyProgress()
+
+        revalidatePath('/log')
+        revalidatePath('/')
+
+        return {
+            success: true as const,
+            data: { id: mealId, calories, protein, carbs, fat },
+            newTotals: {
+                calories: Math.round(newTotals.calories),
+                protein: Math.round(newTotals.protein),
+                carbs: Math.round(newTotals.carbs),
+                fat: Math.round(newTotals.fat),
+            },
         }
+    } catch (err: any) {
+        console.error('updateMealNutrition crash:', err)
+        return { error: String(err?.message ?? 'Server error') }
     }
 }

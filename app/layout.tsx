@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Fraunces, DM_Sans } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
+import { PullToRefresh } from '@/components/pull-to-refresh'
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -58,7 +59,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable} ${dmSans.variable} antialiased min-h-screen overflow-x-hidden`}
       >
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <PullToRefresh>
+            {children}
+          </PullToRefresh>
           <Toaster richColors position="top-right" />
         </ThemeProvider>
       </body>

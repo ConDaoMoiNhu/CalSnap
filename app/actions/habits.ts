@@ -13,6 +13,11 @@ const CAL_PER_MIN: Record<ExerciseType, number> = {
   Cycling: 8,
 }
 
+// ✅ Helper: luôn dùng local date (tránh UTC shift)
+function localDate(date?: Date) {
+  return (date ?? new Date()).toLocaleDateString('en-CA') // YYYY-MM-DD theo local timezone
+}
+
 export async function getDailyHabits(date: string) {
   const supabase = await createClient()
   const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -23,9 +28,9 @@ export async function getDailyHabits(date: string) {
     .select('*')
     .eq('user_id', user.id)
     .eq('date', date)
-    .single()
+    .maybeSingle()
 
-  if (error && error.message?.toLowerCase().includes('daily_habits')) return null
+  if (error) return null
   return data ?? null
 }
 
@@ -66,7 +71,6 @@ export async function upsertWater(date: string, waterMl: number) {
     return { error: error.message }
   }
 
-  // Keep profiles + adherence in sync with daily_habits water
   await supabase
     .from('profiles')
     .update({ water_ml_today: waterMl, water_updated_date: date })
@@ -90,7 +94,6 @@ export async function upsertExercise(
 
   const calories = Math.round(minutes * CAL_PER_MIN[type])
 
-  // Dùng maybeSingle thay single để tránh lỗi khi chưa có row
   const { data: existing } = await supabase
     .from('daily_habits')
     .select('exercise_minutes, exercise_calories')
@@ -104,12 +107,7 @@ export async function upsertExercise(
   const { error } = await supabase
     .from('daily_habits')
     .upsert(
-      {
-        user_id: user.id,
-        date,
-        exercise_minutes: newMinutes,
-        exercise_calories: newCalories,
-      },
+      { user_id: user.id, date, exercise_minutes: newMinutes, exercise_calories: newCalories },
       { onConflict: 'user_id,date' }
     )
 
@@ -119,16 +117,16 @@ export async function upsertExercise(
   }
 
   revalidatePath('/')
-  // Trả về newCalories để client dùng trực tiếp — không cần fetch lại DB
   return { success: true, newCalories }
 }
 
 export async function getStreakAndWeeklyMeals(userId: string) {
   const supabase = await createClient()
 
+  // ✅ Dùng local date thay vì toISOString()
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6)
-  const startDate = sevenDaysAgo.toISOString().split('T')[0]
+  const startDate = localDate(sevenDaysAgo)
 
   const { data: meals } = await supabase
     .from('meal_logs')
@@ -144,7 +142,7 @@ export async function getStreakAndWeeklyMeals(userId: string) {
   let streak = 0
   const checkDate = new Date()
   for (let i = 0; i < 365; i++) {
-    const d = checkDate.toISOString().split('T')[0]
+    const d = localDate(checkDate) // ✅ local date
     if (datesWithMeals.has(d)) {
       streak++
       checkDate.setDate(checkDate.getDate() - 1)
