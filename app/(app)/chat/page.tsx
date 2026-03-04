@@ -167,20 +167,24 @@ export default function ChatPage() {
     show: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1,
-        delayChildren: 0.2
+        staggerChildren: 0.05,
+        delayChildren: 0.1
       }
     }
   }
 
   const messageVariants = {
-    hidden: { opacity: 0, scale: 0.9, y: 15, filter: 'blur(8px)' },
+    hidden: { opacity: 0, scale: 0.95, y: 10, filter: 'blur(4px)' },
     show: {
       opacity: 1,
       scale: 1,
       y: 0,
       filter: 'blur(0px)',
-      transition: { type: 'spring', damping: 20, stiffness: 200 }
+      transition: { 
+        type: 'spring' as const, 
+        damping: 25, 
+        stiffness: 300 
+      }
     }
   }
 
