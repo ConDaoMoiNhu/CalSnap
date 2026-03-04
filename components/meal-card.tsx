@@ -287,7 +287,7 @@ export function MealCard({ meal, onToggleFavorite, onUpdate }: MealCardProps) {
                 </AnimatePresence>
             </motion.div>
         </div>
-        </div >
+    </div >
     )
 }
 

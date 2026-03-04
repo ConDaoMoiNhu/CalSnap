@@ -14,6 +14,7 @@ import { DatePicker } from '@/components/date-picker'
 import { toast } from '@/components/toast'
 import { SwipeableMealCard } from '@/components/swipeable-meal-card'
 import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
 
 type Meal = {
   id: string
