@@ -105,9 +105,48 @@ export default function ChatPage() {
         throw new Error(msg)
       }
 
+      const rawReply: string =
+        typeof data.reply === 'string'
+          ? data.reply
+          : 'Xin lỗi, hiện tại tôi không thể trả lời. Bạn thử lại sau nhé.'
+
+      // Parse ACTION tags giống FloatingAIAssistant
+      const actionMatches = rawReply.matchAll(/\[ACTION:(\w+):(\{.*?\})\]/g)
+      let cleanReply = rawReply.replace(/\[ACTION:.*?\]/g, '').trim()
+
+      for (const match of actionMatches) {
+        const actionType = match[1]
+        try {
+          const actionData = JSON.parse(match[2])
+
+          const actionRes = await fetch('/api/assistant/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ type: actionType, data: actionData }),
+          })
+          const ok = actionRes.ok
+
+          if (actionType === 'LOG_MEAL') {
+            cleanReply += `\n\n✅ Đã log: ${actionData.foodName} (${actionData.calories} kcal)`
+            if (ok) toast.success(`Đã thêm bữa ăn: ${actionData.foodName}`)
+          } else if (actionType === 'UPDATE_MEAL') {
+            cleanReply += `\n\n✏️ Đã cập nhật: ${actionData.foodName}`
+            if (ok) toast.success(`Đã cập nhật bữa ăn: ${actionData.foodName}`)
+          } else if (actionType === 'DELETE_MEAL') {
+            cleanReply += `\n\n🗑️ Đã xóa: ${actionData.foodName}`
+            if (ok) toast.success(`Đã xoá bữa ăn: ${actionData.foodName}`)
+          } else if (actionType === 'UPDATE_GOAL') {
+            cleanReply += `\n\n🎯 Đã cập nhật mục tiêu: ${actionData.daily_calorie_goal} kcal/ngày`
+            if (ok) toast.success(`Mục tiêu mới: ${actionData.daily_calorie_goal} kcal/ngày`)
+          }
+        } catch {
+          // Nếu ACTION lỗi parse / gọi API, bỏ qua và vẫn hiển thị phần text còn lại
+        }
+      }
+
       const assistantMsg: Message = {
         role: 'assistant',
-        content: data.reply ?? 'Xin lỗi, hiện tại tôi không thể trả lời. Bạn thử lại sau nhé.',
+        content: cleanReply || rawReply,
         timestamp: new Date().toISOString(),
       }
       setMessages((m) => [...m, assistantMsg])
