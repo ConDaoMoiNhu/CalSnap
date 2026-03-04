@@ -160,11 +160,9 @@ export function AIAssistantWidget() {
 
       const reply = data.reply ?? '...'
       const actionMatch = reply.match(/\[ACTION:(\w+):(\{[\s\S]*?\})\]/)
-      // Strip both ACTIONS and internal IDs [ID:...]
-      let cleanReply = reply
-        .replace(/\[ACTION:[\s\S]*?\]/g, '')
-        .replace(/\[ID:[^\]]+\]/gi, '')
-        .trim()
+      // DO NOT strip [ID:...] from the content stored in state (useful for AI history/memory)
+      // We only strip [ACTION:...]
+      const msgForState = reply.replace(/\[ACTION:[\s\S]*?\]/g, '').trim()
 
       if (actionMatch) {
         try {
@@ -176,18 +174,18 @@ export function AIAssistantWidget() {
             setPendingAction({ type, data: actionData, messageIndex: msgIdx })
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: cleanReply || `Xác nhận xóa bữa ${actionData.foodName}?`
+              content: msgForState || `Xác nhận xóa bữa ${actionData.foodName}?`
             }])
           } else {
             await handleAction(type, actionData)
-            setMessages(prev => [...prev, { role: 'assistant', content: cleanReply }])
+            setMessages(prev => [...prev, { role: 'assistant', content: msgForState }])
           }
         } catch (err) {
           console.error("Failed to parse AI action:", err)
-          setMessages(prev => [...prev, { role: 'assistant', content: cleanReply }])
+          setMessages(prev => [...prev, { role: 'assistant', content: msgForState }])
         }
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: cleanReply }])
+        setMessages(prev => [...prev, { role: 'assistant', content: msgForState }])
       }
     } catch {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Lỗi AI.' }])
@@ -253,7 +251,9 @@ export function AIAssistantWidget() {
                     <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
                       <div className={`max-w-[85%] px-4 py-3 text-sm rounded-2xl break-words ${m.role === 'user' ? 'bg-emerald-500 text-white rounded-br-sm' : 'bg-slate-900 text-slate-100 rounded-bl-sm border border-slate-800'}`}>
                         {m.image && <img src={m.image} alt="" className="w-32 rounded-xl mb-2 object-cover" />}
-                        <p className="whitespace-pre-wrap">{m.content}</p>
+                        <p className="whitespace-pre-wrap">
+                          {m.content.replace(/\[ID:[^\]]+\]/gi, '').trim()}
+                        </p>
                         {m.role === 'assistant' && pendingAction?.messageIndex === i && (
                           <div className="flex gap-2 mt-3 pt-3 border-t border-white/10">
                             <button onClick={() => handleAction(pendingAction.type, pendingAction.data)} className="px-3 py-1.5 bg-red-500 text-white text-xs font-bold rounded-lg">Xoá ngay</button>
