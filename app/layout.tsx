@@ -42,8 +42,8 @@ export const metadata: Metadata = {
     title: 'CalSnap',
   },
   icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
+    icon: ['/icon.svg', '/icon-192.png', '/icon-512.png'],
+    apple: '/apple-touch-icon.png',
   },
 }
 
