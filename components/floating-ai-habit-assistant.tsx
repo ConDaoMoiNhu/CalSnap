@@ -2,22 +2,22 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Sparkles, X, Minus, Send, Paperclip, Trash } from 'lucide-react'
+import { Sparkles, Send, Paperclip, Trash, ChevronDown, MessageCircle, MoreVertical } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from '@/components/toast'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   image?: string // base64 preview URL
+  timestamp: string
 }
 
 const QUICK_ACTIONS = [
   'Tôi vừa ăn gì hôm nay?',
   'Còn bao nhiêu kcal hôm nay?',
-  'Tôi vừa ăn 1 tô phở bò',
   'Gợi ý bữa tối theo plan của tôi',
-  'Phân tích dinh dưỡng hôm nay',
   'Tôi nên ăn gì để đủ protein?',
 ]
 
@@ -30,8 +30,7 @@ const toBase64 = (file: File): Promise<string> =>
   })
 
 export function AIAssistantWidget() {
-  const [open, setOpen] = useState(false)
-  const [minimized, setMinimized] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>(() => {
     if (typeof window === 'undefined') return []
     try {
@@ -45,9 +44,10 @@ export function AIAssistantWidget() {
   const [loading, setLoading] = useState(false)
   const [image, setImage] = useState<{ base64: string; preview: string } | null>(null)
   const [pendingAction, setPendingAction] = useState<{ type: string; data: any; messageIndex: number } | null>(null)
+
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
 
   const triggerHaptic = (style: 'light' | 'medium' | 'success' = 'light') => {
     if (typeof window !== 'undefined' && 'vibrate' in navigator) {
@@ -58,12 +58,10 @@ export function AIAssistantWidget() {
   }
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' })
     try {
       window.localStorage.setItem('csnap_ai_chat', JSON.stringify(messages.slice(-40)))
-    } catch {
-      // ignore
-    }
+    } catch { }
   }, [messages])
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,7 +73,6 @@ export function AIAssistantWidget() {
   }
 
   const handleAction = async (type: string, data: any) => {
-    console.log(`[AI ACTION] ${type}:`, data)
     setLoading(true)
     try {
       const res = await fetch('/api/assistant/action', {
@@ -94,28 +91,20 @@ export function AIAssistantWidget() {
 
         toast.success('Hành động hoàn tất!', {
           onClick: () => {
-            if (targetId) {
-              router.push(`/log?highlight=${targetId}`)
-            }
+            if (targetId) router.push(`/log?highlight=${targetId}`)
           }
         })
 
         const eventName = (type === 'LOG_WATER' || type === 'UPDATE_WATER') ? 'calsnap:water-updated' : 'calsnap:meal-updated'
         window.dispatchEvent(new CustomEvent(eventName, {
-          detail: {
-            date: targetDate,
-            water_ml: json?.total ?? null,
-            mealId: targetId
-          }
+          detail: { date: targetDate, mealId: targetId }
         }))
       } else {
         const errorData = await res.json().catch(() => ({}))
-        console.error("Action failed:", errorData)
         const displayError = errorData.error || 'Không thể thực hiện yêu cầu.'
         toast.error(displayError)
       }
     } catch (err) {
-      console.error("Action connection error:", err)
       toast.error('Lỗi kết nối.')
     } finally {
       setLoading(false)
@@ -127,7 +116,11 @@ export function AIAssistantWidget() {
     const msg = text ?? input.trim()
     if (!msg && !image) return
 
-    const userMsg: Message = { role: 'user', content: msg, image: image?.preview }
+    const userMsg: Message = {
+      role: 'user',
+      content: msg,
+      timestamp: new Date().toISOString()
+    }
     setMessages(prev => [...prev, userMsg])
     setInput('')
     setImage(null)
@@ -138,7 +131,7 @@ export function AIAssistantWidget() {
     try {
       const payload: any = {
         message: msg,
-        history: messages.slice(-6),
+        history: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
       }
       if (image?.base64) payload.imageBase64 = image.base64
 
@@ -151,13 +144,12 @@ export function AIAssistantWidget() {
 
       if (!res.ok) {
         const errorMsg = data?.error ?? 'Hệ thống AI đang bận, vui lòng thử lại sau.'
-        setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }])
+        setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, timestamp: new Date().toISOString() }])
         return
       }
 
       const reply = data.reply ?? '...'
       const actionMatch = reply.match(/\[ACTION:(\w+):(\{[\s\S]*?\})\]/)
-      // DO NOT strip [ID:...] from state (useful for AI history/memory)
       const msgForState = reply.replace(/\[ACTION:[\s\S]*?\]/g, '').trim()
 
       if (actionMatch) {
@@ -170,22 +162,21 @@ export function AIAssistantWidget() {
             setPendingAction({ type, data: actionData, messageIndex: msgIdx })
             setMessages(prev => [...prev, {
               role: 'assistant',
-              content: msgForState || `Xác nhận xóa bữa ${actionData.foodName}?`
+              content: msgForState || `Xác nhận xóa bữa ${actionData.foodName}?`,
+              timestamp: new Date().toISOString()
             }])
           } else {
             await handleAction(type, actionData)
-            setMessages(prev => [...prev, { role: 'assistant', content: msgForState }])
+            setMessages(prev => [...prev, { role: 'assistant', content: msgForState, timestamp: new Date().toISOString() }])
           }
         } catch (err) {
-          console.error("Failed to parse AI action:", err)
-          setMessages(prev => [...prev, { role: 'assistant', content: msgForState }])
+          setMessages(prev => [...prev, { role: 'assistant', content: msgForState, timestamp: new Date().toISOString() }])
         }
       } else {
-        setMessages(prev => [...prev, { role: 'assistant', content: msgForState }])
+        setMessages(prev => [...prev, { role: 'assistant', content: msgForState, timestamp: new Date().toISOString() }])
       }
     } catch (err) {
-      console.error("Assistant error:", err)
-      setMessages(prev => [...prev, { role: 'assistant', content: 'Lỗi AI. Vui lòng thử lại sau.' }])
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Lỗi AI. Vui lòng thử lại sau.', timestamp: new Date().toISOString() }])
     } finally {
       setLoading(false)
     }
@@ -199,93 +190,141 @@ export function AIAssistantWidget() {
     }
   }
 
+  const renderContent = (text: string) => {
+    const cleanText = text.replace(/\[ID:[^\]]+\]/gi, '').trim()
+    return cleanText
+      .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br />')
+  }
+
   return (
     <>
-      <div className="fixed bottom-28 right-4 md:right-6 z-50">
-        {!open && (
-          <div className="relative group">
-            <div className="absolute inset-0 rounded-full hoverboard-gradient opacity-30 animate-ping" />
-            <button
-              onClick={() => { setOpen(true); setMinimized(false) }}
-              className="relative w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 via-teal-400 to-sky-400 flex items-center justify-center shadow-[0_18px_45px_rgba(16,185,129,0.55)] hover:scale-110 transition-transform"
-            >
-              <Sparkles size={24} className="text-white" />
-            </button>
-          </div>
-        )}
+      {/* Trigger Button */}
+      <div className="fixed bottom-24 right-4 z-50 pointer-events-none">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-14 h-14 rounded-2xl hoverboard-gradient text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all pointer-events-auto group relative"
+        >
+          <div className="absolute inset-0 rounded-2xl bg-emerald-500 blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
+          <AnimatePresence mode="wait">
+            {!isOpen ? (
+              <motion.div
+                key="chat"
+                initial={{ rotate: -90, scale: 0, opacity: 0 }}
+                animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                exit={{ rotate: 90, scale: 0, opacity: 0 }}
+              >
+                <MessageCircle />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="sparkles"
+                initial={{ rotate: -90, scale: 0, opacity: 0 }}
+                animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                exit={{ rotate: 90, scale: 0, opacity: 0 }}
+              >
+                <Sparkles />
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </button>
       </div>
 
-      {open && (
-        <div className="fixed bottom-24 right-4 z-50 flex flex-col items-end pointer-events-none drop-shadow-2xl">
-          <AnimatePresence mode="wait">
-            {isOpen && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.9, y: 20, filter: 'blur(10px)' }}
-                animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 0.9, y: 20, filter: 'blur(10px)' }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="w-[calc(100vw-2rem)] sm:w-[380px] h-[520px] mb-4 ios-bubble-ai overflow-hidden flex flex-col pointer-events-auto shadow-2xl"
-              >
-                {/* Minimalist Header */}
-                <div className="px-5 py-4 flex items-center justify-between border-b border-white/20 dark:border-white/5 bg-white/50 dark:bg-slate-900/50">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl hoverboard-gradient flex items-center justify-center shadow-lg shadow-emerald-500/10">
-                      <Sparkles size={16} className="text-white" />
-                    </div>
-                    <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight">Trợ lý CalSnap</span>
-                  </div>
-                  <button
-                    onClick={() => setIsOpen(false)}
-                    className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors active:scale-90"
-                  >
-                    <ChevronDown size={18} className="text-slate-500" />
-                  </button>
+      {/* Chat Window */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 30, filter: 'blur(15px)' }}
+            animate={{ opacity: 1, scale: 1, y: 0, filter: 'blur(0px)' }}
+            exit={{ opacity: 0, scale: 0.9, y: 30, filter: 'blur(15px)' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className="fixed bottom-[96px] right-4 z-50 w-[calc(100vw-2rem)] sm:w-[380px] h-[520px] ios-bubble-ai overflow-hidden flex flex-col shadow-2xl pointer-events-auto"
+          >
+            {/* Header */}
+            <div className="px-5 py-4 flex items-center justify-between border-b border-white/20 dark:border-white/10 bg-white/50 dark:bg-slate-900/50 ios-blur">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl hoverboard-gradient flex items-center justify-center shadow-lg shadow-emerald-500/10">
+                  <Sparkles size={16} className="text-white" />
                 </div>
-                <button onClick={clearHistory} className="p-1.5 hover:bg-red-500/10 rounded-lg text-slate-400 hover:text-red-400"><Trash size={14} /></button>
-                <button onClick={() => setOpen(false)} className="p-1.5 hover:bg-white/5 rounded-lg text-slate-400"><X size={14} /></button>
+                <div className="flex flex-col">
+                  <span className="font-bold text-slate-900 dark:text-white text-sm tracking-tight leading-none">Trợ lý CalSnap</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold mt-1">AI ACTIVE</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <button onClick={clearHistory} className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors text-slate-400 hover:text-red-500">
+                  <Trash size={16} />
+                </button>
+                <button onClick={() => setIsOpen(false)} className="p-2 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 rounded-full transition-colors">
+                  <ChevronDown size={18} className="text-slate-500" />
+                </button>
               </div>
             </div>
 
-            {!minimized && (
-        <>
-          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-            {messages.length === 0 && (
-              <div className="flex flex-col gap-2">
-                {QUICK_ACTIONS.map(q => (
-                  <button key={q} onClick={() => handleSend(q)} className="text-left px-4 py-2.5 rounded-2xl bg-white/5 hover:bg-emerald-500/20 text-sm text-slate-300 transition-colors border border-white/5">{q}</button>
-                     {/* Messages Area */ }
-                  < div className = "flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-hide" >
-                  {
-                    messages.map((m, i) => (
-                      <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-2 duration-300`}>
-                        <div className={`max-w-[85%] p-3 px-4 shadow-sm text-[14.5px] leading-relaxed ${m.role === 'user'
-                          ? 'ios-bubble-user'
-                          : 'ios-bubble-ai text-slate-800 dark:text-slate-100'
-                          }`}>
-                          <div
-                            className="[&_strong]:font-bold [&_ol]:my-1 [&_ul]:my-1"
-                            dangerouslySetInnerHTML={{ __html: renderContent(m.content) }}
-                          />
-                        </div>
-                      </div>
-                    ))
-                  }
-              { loading && (
-                    <div className="flex justify-start">
-                      <div className="ios-bubble-ai px-4 py-2.5">
-                        <div className="flex gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 animate-bounce" />
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 animate-bounce [animation-delay:0.2s]" />
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 animate-bounce [animation-delay:0.4s]" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                <div ref={scrollRef} />
-              </div>
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-hide">
+              {messages.length === 0 && (
+                <div className="flex flex-col gap-2 mt-2">
+                  <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1 ml-1">Đề xuất cho bạn</p>
+                  {QUICK_ACTIONS.map(q => (
+                    <button
+                      key={q}
+                      onClick={() => handleSend(q)}
+                      className="text-left px-4 py-3 rounded-2xl bg-white/50 dark:bg-white/5 hover:bg-emerald-500/10 text-[13px] text-slate-700 dark:text-slate-300 transition-all border border-white/40 dark:border-white/5 active:scale-[0.98]"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              )}
 
-            {/* Premium Input */}
-            <div className="p-4 bg-white/50 dark:bg-slate-900/50 border-t border-white/20 dark:border-white/5">
+              {messages.map((m, i) => (
+                <div key={i} className={`flex flex-col ${m.role === 'user' ? 'items-end' : 'items-start'} ios-spring-enter`} style={{ animationDelay: '0.1s' }}>
+                  <div className={`max-w-[85%] p-3 px-4 shadow-sm text-[14.5px] leading-relaxed ${m.role === 'user'
+                    ? 'ios-bubble-user'
+                    : 'ios-bubble-ai text-slate-800 dark:text-slate-100'
+                    }`}>
+                    <div
+                      className="[&_strong]:font-bold [&_ol]:my-1 [&_ul]:my-1"
+                      dangerouslySetInnerHTML={{ __html: renderContent(m.content) }}
+                    />
+
+                    {/* Inline Actions for DELETE confirm in widget */}
+                    {pendingAction?.messageIndex === i && m.role === 'assistant' && (
+                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-white/10">
+                        <button
+                          onClick={() => handleAction(pendingAction.type, pendingAction.data)}
+                          className="px-4 py-1.5 rounded-lg bg-red-500 text-white text-[11px] font-bold shadow-sm"
+                        >
+                          Xóa ngay
+                        </button>
+                        <button
+                          onClick={() => setPendingAction(null)}
+                          className="px-4 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 text-[11px] font-bold"
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="ios-bubble-ai px-4 py-2.5">
+                    <div className="flex gap-1 h-3 items-center">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 animate-bounce" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500/40 animate-bounce [animation-delay:0.4s]" />
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={scrollRef} />
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 pt-3 pb-6 bg-white/60 dark:bg-slate-950/60 border-t border-white/20 dark:border-white/5 ios-blur">
               <div className="relative group">
                 <input
                   type="text"
@@ -293,56 +332,21 @@ export function AIAssistantWidget() {
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
                   placeholder="Hỏi gì đó..."
-                  className="w-full bg-slate-100/50 dark:bg-slate-800/50 border-none rounded-2xl pl-4 pr-12 py-3 text-sm focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none"
+                  disabled={loading}
+                  className="w-full bg-slate-100/80 dark:bg-slate-900/80 border-none rounded-2xl pl-4 pr-12 py-3.5 text-[15px] focus:ring-2 focus:ring-emerald-500/20 transition-all outline-none dark:text-white"
                 />
                 <button
                   onClick={() => handleSend()}
                   disabled={loading || !input.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-xl hoverboard-gradient text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 disabled:opacity-30 active:scale-90 transition-all"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-xl hoverboard-gradient text-white flex items-center justify-center shadow-lg shadow-emerald-500/20 disabled:opacity-30 active:scale-90 transition-all"
                 >
-                  <Send size={14} />
+                  <Send size={16} />
                 </button>
               </div>
             </div>
           </motion.div>
         )}
-        </AnimatePresence>
-
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-14 h-14 rounded-2xl hoverboard-gradient text-white shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-all pointer-events-auto group relative"
-      >
-        <div className="absolute inset-0 rounded-2xl bg-emerald-500 blur-lg opacity-20 group-hover:opacity-40 transition-opacity" />
-        <MessageCircle className={`transition-all duration-500 ${isOpen ? 'rotate-90 scale-0 opacity-0' : 'rotate-0 scale-100 opacity-100'}`} />
-        <Sparkles className={`absolute transition-all duration-500 ${isOpen ? 'rotate-0 scale-110 opacity-100' : '-rotate-90 scale-0 opacity-0'}`} />
-      </button>
-    </div >
-      className="typing-dot bg-emerald-400" style = {{ animationDelay: '0.4s' }
-} />
-                        </div >
-                      </div >
-                    </div >
-                  )}
-<div ref={bottomRef} />
-                </div >
-
-  <div className="p-3 border-t border-white/10 bg-black/20 flex items-center gap-2">
-    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
-    <button onClick={() => fileRef.current?.click()} className="p-2 hover:bg-white/5 rounded-xl text-slate-400"><Paperclip size={18} /></button>
-    <input
-      value={input}
-      onChange={e => setInput(e.target.value)}
-      onKeyDown={e => e.key === 'Enter' && handleSend()}
-      placeholder="Hỏi AI..."
-      className="flex-1 bg-white/5 rounded-2xl px-4 py-2.5 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none border border-white/5"
-    />
-    <button onClick={() => handleSend()} disabled={loading} className="p-2 bg-emerald-500 text-white rounded-xl disabled:opacity-50"><Send size={18} /></button>
-  </div>
-              </>
-            )}
-          </div >
-        </div >
-      )}
+      </AnimatePresence>
     </>
   )
 }
