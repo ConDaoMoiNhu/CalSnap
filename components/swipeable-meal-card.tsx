@@ -188,10 +188,9 @@ export function SwipeableMealCard({ children, onDelete, onEdit, className = '', 
                 </button>
             </div>
 
-            {/* Hidden closing overlay — now behind the card so it doesn't block dragging */}
             {isOpen && (
                 <div
-                    className="absolute inset-0 z-5"
+                    className="absolute inset-0 z-25"
                     onClick={() => {
                         setOffset(0)
                         setIsOpen(false)

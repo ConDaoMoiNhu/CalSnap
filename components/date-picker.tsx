@@ -32,7 +32,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
   today.setHours(0, 0, 0, 0)
 
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: Event) {
       if (ref.current && !ref.current.contains(e.target as Node)) {
         setOpen(false)
       }
