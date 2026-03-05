@@ -15,6 +15,8 @@ interface Message {
   timestamp: string
 }
 
+type ActionData = Record<string, unknown>
+
 const QUICK_ACTIONS = [
   'Tôi vừa ăn gì hôm nay?',
   'Còn bao nhiêu kcal hôm nay?',
@@ -44,7 +46,7 @@ export function AIAssistantWidget() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [image, setImage] = useState<{ base64: string; preview: string } | null>(null)
-  const [pendingAction, setPendingAction] = useState<{ type: string; data: any; messageIndex: number } | null>(null)
+  const [pendingAction, setPendingAction] = useState<{ type: string; data: ActionData; messageIndex: number } | null>(null)
 
   const router = useRouter()
   const pathname = usePathname()
@@ -74,7 +76,7 @@ export function AIAssistantWidget() {
     setImage({ base64, preview })
   }
 
-  const handleAction = async (type: string, data: any) => {
+  const handleAction = async (type: string, data: ActionData) => {
     setLoading(true)
     try {
       const res = await fetch('/api/assistant/action', {
@@ -139,7 +141,7 @@ export function AIAssistantWidget() {
     triggerHaptic('light')
 
     try {
-      const payload: any = {
+      const payload: { message: string; history: { role: string; content: string }[]; imageBase64?: string } = {
         message: msg,
         history: messages.slice(-6).map(m => ({ role: m.role, content: m.content })),
       }

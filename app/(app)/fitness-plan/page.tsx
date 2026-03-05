@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft, Droplets, Dumbbell, Clock, Target, CheckCircle2, TrendingDown, AlertTriangle, Flame } from 'lucide-react'
+import type { FitnessPlan } from '@/lib/types'
 
 function getBmiColor(cat: string) {
   const map: Record<string, string> = {
@@ -52,7 +53,7 @@ export default async function FitnessPlanPage() {
   const { data: profile } = await supabase.from('profiles').select('*').eq('id', user.id).single()
   if (!profile?.fitness_plan) redirect('/onboarding')
 
-  const plan = profile.fitness_plan as any
+  const plan = profile.fitness_plan as FitnessPlan
   const today = new Date().toISOString().split('T')[0]
 
   const { data: todayMeals } = await supabase

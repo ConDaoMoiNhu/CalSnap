@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextRequest, NextResponse } from 'next/server'
 import { rateLimit } from '@/lib/rate-limit'
 import { z } from 'zod'
+import type { FitnessPlan } from '@/lib/types'
 
 const BodySchema = z.object({
   message: z.string().max(2000).optional().default(''),
@@ -50,7 +51,8 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.GOOGLE_AI_API_KEY
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
+      console.error('[/api/assistant] GOOGLE_AI_API_KEY is not configured')
+      return NextResponse.json({ error: 'Dịch vụ AI chưa được cấu hình. Vui lòng liên hệ quản trị viên.' }, { status: 500 })
     }
 
     const supabase = await createClient()
@@ -75,7 +77,7 @@ export async function POST(req: NextRequest) {
       supabase.from('plan_adherence').select('*').eq('user_id', user.id).eq('date', today).maybeSingle(),
     ])
 
-    const plan = profile?.fitness_plan as any
+    const plan = profile?.fitness_plan as FitnessPlan | null
     const actualCalories = recentMeals?.filter(m => m.logged_at === today).reduce((s, m) => s + m.calories, 0) ?? 0
     const calorieGoal = plan?.daily_calories ?? profile?.daily_calorie_goal ?? 2000
     const caloriesLeft = calorieGoal - actualCalories
@@ -98,7 +100,7 @@ export async function POST(req: NextRequest) {
 - Macros: P:${adherence?.protein_actual ?? 0}g C:${adherence?.carbs_actual ?? 0}g F:${adherence?.fat_actual ?? 0}g
 
 ## DANH SÁCH MÓN ĂN (2 NGÀY GẦN NHẤT):
-${recentMeals?.map((m: any) => `[ID:${m.id}] ${m.food_name} (${m.logged_at}): ${m.calories} kcal`).join('\n') || '- Chưa có dữ liệu'}
+${recentMeals?.map((m) => `[ID:${m.id}] ${m.food_name} (${m.logged_at}): ${m.calories} kcal`).join('\n') || '- Chưa có dữ liệu'}
 
 ## HÀNH ĐỘNG (Đặt ở CUỐI):
 - Thêm: [ACTION:LOG_MEAL:{"foodName":"...","calories":...,"protein":...,"carbs":...,"fat":...}]
@@ -109,15 +111,15 @@ ${recentMeals?.map((m: any) => `[ID:${m.id}] ${m.food_name} (${m.logged_at}): ${
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-    const parts: any[] = []
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
     if (message?.trim()) parts.push({ text: message.trim() })
     if (imageBase64) parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } })
     if (parts.length === 0) parts.push({ text: 'Xin chao' })
 
     const chatHistory = (history ?? [])
-      .filter((m: any) => m.content?.trim())
-      .map((m: any) => ({
-        role: m.role === 'user' ? 'user' : 'model',
+      .filter((m) => m.content?.trim())
+      .map((m) => ({
+        role: m.role === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: m.content }],
       }))
 
@@ -134,13 +136,10 @@ ${recentMeals?.map((m: any) => `[ID:${m.id}] ${m.food_name} (${m.logged_at}): ${
     const reply = response.text()
 
     return NextResponse.json({ reply })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Assistant API Full Error:', error)
 
-    // Help identify network/VPN issues
-    const errorDetail = error?.message || 'Unknown'
-    const errorStack = error?.stack || ''
-
+    const errorDetail = (error as Error)?.message || 'Unknown'
     const message = errorDetail.toLowerCase()
 
     if (

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { User, Target, LogOut, ClipboardList, Scale, TrendingDown, TrendingUp, Edit3 } from 'lucide-react'
 import Link from 'next/link'
+import type { Profile, WeightCheckinRow, FitnessPlan } from '@/lib/types'
 
 export default function ProfilePage() {
   const [email, setEmail] = useState('')
@@ -15,8 +16,8 @@ export default function ProfilePage() {
   const [totalMeals, setTotalMeals] = useState(0)
   const [daysTracked, setDaysTracked] = useState(0)
   const [avgCalories, setAvgCalories] = useState(0)
-  const [profile, setProfile] = useState<any>(null)
-  const [weightHistory, setWeightHistory] = useState<any[]>([])
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [weightHistory, setWeightHistory] = useState<WeightCheckinRow[]>([])
   const [journeyStreak, setJourneyStreak] = useState(0)
   const [journeyScore, setJourneyScore] = useState(0)
 
@@ -40,8 +41,8 @@ export default function ProfilePage() {
         .from('meal_logs').select('logged_at, calories').eq('user_id', user.id)
 
       if (meals && meals.length > 0) {
-        const dates = new Set((meals as any[]).map((m) => m.logged_at))
-        const total = (meals as any[]).reduce((s, m) => s + m.calories, 0)
+        const dates = new Set(meals.map((m) => m.logged_at))
+        const total = meals.reduce((s, m) => s + m.calories, 0)
         setTotalMeals(meals.length)
         setDaysTracked(dates.size)
         setAvgCalories(Math.round(total / dates.size))
@@ -56,7 +57,7 @@ export default function ProfilePage() {
     })
   }, [])
 
-  const plan = profile?.fitness_plan as any
+  const plan = profile?.fitness_plan as FitnessPlan | null
   const weightDiff = profile?.weight_kg && profile?.target_weight_kg
     ? Math.abs(profile.weight_kg - profile.target_weight_kg) : null
 
@@ -148,7 +149,7 @@ export default function ProfilePage() {
               { label: 'Calories', value: `${plan.daily_calories} kcal`, icon: '🔥' },
               { label: 'Protein', value: `${plan.daily_protein_g}g`, icon: '💪' },
               { label: 'Workouts', value: `${plan.weekly_workouts}x/tuần`, icon: '🏋️' },
-              { label: 'Mục tiêu', value: profile.goal === 'lose_weight' ? 'Giảm cân' : profile.goal === 'gain_muscle' ? 'Tăng cơ' : 'Duy trì', icon: '🎯' },
+              { label: 'Mục tiêu', value: profile?.goal === 'lose_weight' ? 'Giảm cân' : profile?.goal === 'gain_muscle' ? 'Tăng cơ' : 'Duy trì', icon: '🎯' },
             ].map(({ label, value, icon }) => (
               <div key={label} className="bg-slate-50 dark:bg-slate-800/60 rounded-2xl p-3 flex items-center gap-2">
                 <span className="text-base">{icon}</span>
@@ -220,8 +221,8 @@ export default function ProfilePage() {
             <div className="mt-4 pt-4 border-t border-slate-50 dark:border-slate-800/50">
               <div className="flex items-end gap-1.5 h-16">
                 {weightHistory.map((w, i) => {
-                  const maxVal = Math.max(...weightHistory.map((x: any) => x.weight_kg))
-                  const minVal = Math.min(...weightHistory.map((x: any) => x.weight_kg))
+                  const maxVal = Math.max(...weightHistory.map((x) => x.weight_kg))
+                  const minVal = Math.min(...weightHistory.map((x) => x.weight_kg))
                   const r = maxVal - minVal || 1
                   const h = Math.max(15, ((w.weight_kg - minVal) / r) * 100)
                   const dayStr = new Date(w.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })

@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
 
     const byDate = new Map<string, DayAgg>()
 
-      ; (meals ?? []).forEach((m: any) => {
+      ; (meals ?? []).forEach((m) => {
         const key = m.logged_at
         const existing =
           byDate.get(key) ?? {
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
         byDate.set(key, existing)
       })
 
-      ; (habits ?? []).forEach((h: any) => {
+      ; (habits ?? []).forEach((h) => {
         const key = h.date
         const existing =
           byDate.get(key) ?? {

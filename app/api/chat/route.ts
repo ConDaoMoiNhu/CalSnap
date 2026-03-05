@@ -1,30 +1,77 @@
-// app/api/assistant/route.ts
+// app/api/chat/route.ts
 import { createClient } from '@/lib/supabase/server'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextRequest, NextResponse } from 'next/server'
+import { rateLimit } from '@/lib/rate-limit'
+import { z } from 'zod'
+import type { FitnessPlan } from '@/lib/types'
+
+const BodySchema = z.object({
+  message: z.string().max(2000).optional(),
+  imageBase64: z.string().optional(),
+  history: z
+    .array(
+      z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string().max(4000),
+      })
+    )
+    .max(50)
+    .optional(),
+})
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, imageBase64, history } = await req.json()
+    // Rate limit: 15 requests per minute per IP
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+    const rl = rateLimit(ip, { limit: 15, window: 60 })
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Bạn đang gửi quá nhiều yêu cầu. Vui lòng chờ 1 phút rồi thử lại.' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Remaining': '0',
+            'X-RateLimit-Reset': String(rl.reset),
+          },
+        }
+      )
+    }
+
+    const rawBody = await req.json()
+    const parsed = BodySchema.safeParse(rawBody)
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: `Dữ liệu không hợp lệ: ${parsed.error.issues.map((e) => e.message).join(', ')}` },
+        { status: 400 }
+      )
+    }
+    const { message, imageBase64, history } = parsed.data
 
     const apiKey = process.env.GOOGLE_AI_API_KEY
     if (!apiKey) {
-      return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
+      console.error('[/api/chat] GOOGLE_AI_API_KEY is not configured')
+      return NextResponse.json({ error: 'Dịch vụ AI chưa được cấu hình. Vui lòng liên hệ quản trị viên.' }, { status: 500 })
     }
 
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Phiên đăng nhập hết hạn hoặc chưa được xác thực. Vui lòng tải lại trang (F5) hoặc đăng nhập lại.' },
+        { status: 401 }
+      )
+    }
 
     const today = new Date().toISOString().split('T')[0]
 
     const [{ data: profile }, { data: todayMeals }, { data: adherence }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', user.id).single(),
-      supabase.from('meal_logs').select('food_name, calories, protein, carbs, fat').eq('user_id', user.id).eq('logged_at', today),
+      supabase.from('meal_logs').select('id, food_name, calories, protein, carbs, fat').eq('user_id', user.id).eq('logged_at', today),
       supabase.from('plan_adherence').select('*').eq('user_id', user.id).eq('date', today).single(),
     ])
 
-    const plan = profile?.fitness_plan as any
+    const plan = profile?.fitness_plan as FitnessPlan | null
     const actualCalories = todayMeals?.reduce((s, m) => s + m.calories, 0) ?? 0
     const calorieGoal = plan?.daily_calories ?? profile?.daily_calorie_goal ?? 2000
     const caloriesLeft = calorieGoal - actualCalories
@@ -53,7 +100,7 @@ Nhiệm vụ của bạn là giúp người dùng theo dõi sức khỏe một c
 - Streak: ${profile?.journey_streak ?? 0} ngày
 
 ## CÁC BỮA ĂN HÔM NAY (Dùng để Sửa/Xóa):
-${todayMeals?.map((m: any) => `[ID:${m.id}] ${m.food_name}: ${m.calories} kcal`).join('\n') || '- Chưa có dữ liệu'}
+${todayMeals?.map((m) => `[ID:${m.id}] ${m.food_name}: ${m.calories} kcal`).join('\n') || '- Chưa có dữ liệu'}
 
 ## ĐỊNH DẠNG HÀNH ĐỘNG (ACTION):
 Luôn đặt ACTION ở cuối cùng của response, không có văn bản nào sau nó.
@@ -70,15 +117,15 @@ Luôn đặt ACTION ở cuối cùng của response, không có văn bản nào 
     const genAI = new GoogleGenerativeAI(apiKey)
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' })
 
-    const parts: any[] = []
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = []
     if (message?.trim()) parts.push({ text: message.trim() })
     if (imageBase64) parts.push({ inlineData: { mimeType: 'image/jpeg', data: imageBase64 } })
     if (parts.length === 0) parts.push({ text: 'Xin chao' })
 
     const chatHistory = (history ?? [])
-      .filter((m: any) => m.content?.trim())
-      .map((m: any) => ({
-        role: m.role === 'user' ? 'user' : 'model',
+      .filter((m) => m.content?.trim())
+      .map((m) => ({
+        role: m.role === 'user' ? 'user' as const : 'model' as const,
         parts: [{ text: m.content }],
       }))
 
@@ -94,11 +141,11 @@ Luôn đặt ACTION ở cuối cùng của response, không có văn bản nào 
     const reply = result.response.text()
 
     return NextResponse.json({ reply })
-  } catch (error: any) {
-    console.error('Assistant error:', error)
+  } catch (error: unknown) {
+    console.error('Chat error:', error)
 
     const message =
-      typeof error?.message === 'string' ? error.message.toLowerCase() : ''
+      typeof (error as Error)?.message === 'string' ? (error as Error).message.toLowerCase() : ''
 
     if (
       message.includes('quota') ||

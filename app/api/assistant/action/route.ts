@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
         .eq('date', today)
         .maybeSingle()
 
-      const currentHabits = (existingHabits as any)?.water_ml ?? 0
+      const currentHabits = existingHabits?.water_ml ?? 0
       const newTotal = Math.max(0, currentHabits + amount)
 
       const { error: habitsErr } = await supabase
