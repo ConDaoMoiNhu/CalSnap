@@ -1,17 +1,16 @@
 // Service Worker for CalSnap PWA
-// Strategy: Cache-first for static assets, Network-first for API calls
-
-const CACHE_NAME = 'calsnap-v1'
+// ⚠️ BUMP CACHE_VERSION on every deploy to invalidate stale cache
+const CACHE_VERSION = 'v2'
+const CACHE_NAME = `calsnap-${CACHE_VERSION}`
 
 const STATIC_ASSETS = [
-    '/',
     '/manifest.json',
     '/icon.svg',
     '/icon-maskable.svg',
     '/calsnap-logo.svg',
 ]
 
-// Install: pre-cache static assets
+// Install: pre-cache only true static assets (no JS/CSS chunks)
 self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
@@ -19,14 +18,13 @@ self.addEventListener('install', (event) => {
     self.skipWaiting()
 })
 
-// Activate: clean old caches
+// Activate: ALWAYS delete ALL old caches to prevent stale CSS/JS
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
             Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-        )
+        ).then(() => self.clients.claim())
     )
-    self.clients.claim()
 })
 
 // Fetch: cache-first for static, network-first for API + pages
@@ -36,6 +34,12 @@ self.addEventListener('fetch', (event) => {
 
     // Skip non-GET and browser-extension requests
     if (request.method !== 'GET' || !url.protocol.startsWith('http')) return
+
+    // 🔴 NEVER cache Next.js static chunks (_next/static) - they have content hash,
+    // let browser cache handle them natively. SW caching them causes stale CSS bugs.
+    if (url.pathname.startsWith('/_next/')) {
+        return // Let browser handle natively
+    }
 
     // Network-first for API routes
     if (url.pathname.startsWith('/api/')) {
@@ -50,16 +54,16 @@ self.addEventListener('fetch', (event) => {
         return
     }
 
-    // Cache-first for static assets (images, fonts, etc.)
-    if (
-        url.pathname.match(/\.(svg|png|jpg|jpeg|webp|ico|woff2?|ttf)$/) ||
-        STATIC_ASSETS.includes(url.pathname)
-    ) {
+    // Cache-first for true static assets only (images, icons - NOT CSS/JS)
+    if (url.pathname.match(/\.(svg|png|jpg|jpeg|webp|ico|woff2?|ttf)$/) ||
+        STATIC_ASSETS.includes(url.pathname)) {
         event.respondWith(
             caches.match(request).then(
                 (cached) => cached ?? fetch(request).then((res) => {
-                    const clone = res.clone()
-                    caches.open(CACHE_NAME).then((c) => c.put(request, clone))
+                    if (res.ok) {
+                        const clone = res.clone()
+                        caches.open(CACHE_NAME).then((c) => c.put(request, clone))
+                    }
                     return res
                 })
             )
@@ -67,7 +71,7 @@ self.addEventListener('fetch', (event) => {
         return
     }
 
-    // Network-first for everything else (pages, Next.js chunks)
+    // Network-first for everything else (pages)
     event.respondWith(
         fetch(request).catch(() => caches.match(request))
     )
