@@ -30,6 +30,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
   })
   const [monthPickerMode, setMonthPickerMode] = useState(false)
   const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null)
+  const [isMobile, setIsMobile] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const slideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -44,6 +45,14 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
       setViewDate(new Date(y, m - 1, 1))
     }
   }, [value])
+
+  // Detect mobile
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   // Close on outside click
   useEffect(() => {
@@ -63,6 +72,16 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
     }
   }, [open])
 
+  // Lock body scroll on mobile when open
+  useEffect(() => {
+    if (isMobile && open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [isMobile, open])
+
   // Cleanup slide animation timer on unmount
   useEffect(() => {
     return () => {
@@ -81,6 +100,10 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
     if (!d) return placeholder
     const [y, m, day] = d.split('-')
     const dateObj = new Date(`${y}-${m}-${day}T12:00:00`)
+    const todayStr = toYMD(today)
+    const yesterdayStr = toYMD(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
+    if (d === todayStr) return 'Hôm nay'
+    if (d === yesterdayStr) return 'Hôm qua'
     const weekday = DAYS_FULL_VI[dateObj.getDay()]
     return `${weekday}, ${day}/${m}/${y}`
   }
@@ -98,270 +121,294 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
 
     for (let i = startPad - 1; i >= 0; i--) {
       const d = new Date(year, month - 1, prevDays - i)
-      d.setHours(0, 0, 0, 0)
-      rows.push({ date: d, isCurrent: false, disabled: !!maxDate && d > maxDate })
+      rows.push({ date: d, isCurrent: false, disabled: true })
     }
     for (let i = 1; i <= daysInMonth; i++) {
       const d = new Date(year, month, i)
-      d.setHours(0, 0, 0, 0)
-      rows.push({ date: d, isCurrent: true, disabled: !!maxDate && d > maxDate })
+      rows.push({ date: d, isCurrent: true, disabled: !!(maxDate && d > maxDate) })
     }
-    const remaining = 42 - rows.length
-    for (let i = 1; i <= remaining; i++) {
-      const d = new Date(year, month + 1, i)
-      d.setHours(0, 0, 0, 0)
-      rows.push({ date: d, isCurrent: false, disabled: !!maxDate && d > maxDate })
+    const remaining = 7 - (rows.length % 7)
+    if (remaining < 7) {
+      for (let i = 1; i <= remaining; i++) {
+        const d = new Date(year, month + 1, i)
+        rows.push({ date: d, isCurrent: false, disabled: true })
+      }
     }
     return rows
   }
 
-  const selectDate = (d: Date) => {
-    if (maxDate && d > maxDate) return
-    onChange(toYMD(d))
-    setOpen(false)
-    setMonthPickerMode(false)
+  const goNextMonth = () => {
+    setSlideDir('left')
+    if (slideTimerRef.current) clearTimeout(slideTimerRef.current)
+    slideTimerRef.current = setTimeout(() => setSlideDir(null), 350)
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() + 1, 1))
   }
 
   const goPrevMonth = () => {
-    if (slideTimerRef.current) clearTimeout(slideTimerRef.current)
     setSlideDir('right')
-    slideTimerRef.current = setTimeout(() => setSlideDir(null), 300)
-    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1))
-  }
-
-  const goNextMonth = () => {
-    const next = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1)
-    if (maxDate && next > maxDate) return
     if (slideTimerRef.current) clearTimeout(slideTimerRef.current)
-    setSlideDir('left')
-    slideTimerRef.current = setTimeout(() => setSlideDir(null), 300)
-    setViewDate(next)
+    slideTimerRef.current = setTimeout(() => setSlideDir(null), 350)
+    setViewDate((d) => new Date(d.getFullYear(), d.getMonth() - 1, 1))
   }
 
+  const goNextYear = () => setViewDate((d) => new Date(d.getFullYear() + 1, d.getMonth()))
   const goPrevYear = () => setViewDate((d) => new Date(d.getFullYear() - 1, d.getMonth()))
-  const goNextYear = () => {
-    const next = new Date(viewDate.getFullYear() + 1, viewDate.getMonth())
-    if (maxDate && next > maxDate) return
-    setViewDate(next)
-  }
 
-  const selectMonth = (monthIndex: number) => {
-    setViewDate(new Date(viewDate.getFullYear(), monthIndex, 1))
-    setMonthPickerMode(false)
-  }
+  const calendarDays = getCalendarDays()
+  const selectedStr = value || ''
+  const todayStr = toYMD(today)
 
-  const selectToday = () => {
-    if (maxDate && today > maxDate) return
-    onChange(toYMD(today))
-    setViewDate(new Date(today.getFullYear(), today.getMonth(), 1))
-    setOpen(false)
-    setMonthPickerMode(false)
-  }
+  const sixDaysAgo = new Date(today)
+  sixDaysAgo.setDate(today.getDate() - 6)
 
-  const clearDate = () => {
-    onChange('')
-    setOpen(false)
-    setMonthPickerMode(false)
-  }
-
-  const selectedDate = value ? new Date(value + 'T12:00:00') : null
-  const isNextMonthDisabled = !!(maxDate && new Date(viewDate.getFullYear(), viewDate.getMonth() + 1) > maxDate)
-
-  const CalendarPanel = (
-    <div
-      role="dialog"
-      aria-label="Chọn ngày"
-      className="absolute top-full left-1/2 -translate-x-1/2 mt-2 z-[200] bg-white/95 dark:bg-slate-900/95 p-5 shadow-2xl border border-slate-200/50 dark:border-white/10 rounded-[2rem] animate-in fade-in slide-in-from-top-2 duration-200 w-[320px]"
-    >
-      {/* Glassmorphism background */}
-      <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 ios-blur -z-10 rounded-[2rem]" />
-
-      {monthPickerMode ? (
-        /* ── MONTH PICKER MODE ── */
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <button type="button" onClick={goPrevYear} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors" aria-label="Năm trước">
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <span className="font-extrabold text-slate-900 dark:text-white text-base">{viewDate.getFullYear()}</span>
-            <button type="button" onClick={goNextYear} className="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors" aria-label="Năm sau">
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-4 gap-2">
-            {MONTHS_SHORT_VI.map((m, i) => {
-              const isCurrentView = i === viewDate.getMonth()
-              const isCurrentMonth = i === today.getMonth() && viewDate.getFullYear() === today.getFullYear()
-              const monthStart = new Date(viewDate.getFullYear(), i, 1)
-              const isDisabled = !!(maxDate && monthStart > maxDate)
-              return (
-                <button
-                  key={m}
-                  type="button"
-                  onClick={() => !isDisabled && selectMonth(i)}
-                  disabled={isDisabled}
-                  className={cn(
-                    'py-2.5 rounded-2xl text-sm font-bold transition-all',
-                    isDisabled && 'opacity-30 cursor-not-allowed',
-                    isCurrentView && 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/25',
-                    !isCurrentView && !isDisabled && 'hover:bg-slate-100 dark:hover:bg-white/10 text-slate-700 dark:text-slate-200',
-                    isCurrentMonth && !isCurrentView && 'text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-400/40 ring-inset'
-                  )}
-                >
-                  {m}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ) : (
-        /* ── CALENDAR MODE ── */
-        <>
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              type="button"
-              onClick={goPrevMonth}
-              className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
-              aria-label="Tháng trước"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setMonthPickerMode(true)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/10 transition-colors group"
-              aria-label="Chọn tháng và năm"
-            >
-              <span className="font-extrabold text-slate-900 dark:text-white text-base tracking-tight">
-                {MONTHS_VI[viewDate.getMonth()]} {viewDate.getFullYear()}
-              </span>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
-            </button>
-            <button
-              type="button"
-              onClick={goNextMonth}
-              className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors disabled:opacity-30"
-              aria-label="Tháng sau"
-              disabled={isNextMonthDisabled}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {DAYS_VI.map((day, i) => (
-              <div
-                key={day}
-                className={cn(
-                  'text-center text-[11px] font-black py-1 uppercase tracking-widest',
-                  (i === 0 || i === 6)
-                    ? 'text-rose-400/70 dark:text-rose-400/50'
-                    : 'text-slate-400 dark:text-slate-500'
-                )}
-              >
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
-          <div
-            className={cn(
-              'grid grid-cols-7 gap-1 transition-transform duration-200',
-              slideDir === 'left' && 'translate-x-[-4px] opacity-90',
-              slideDir === 'right' && 'translate-x-[4px] opacity-90'
-            )}
-          >
-            {getCalendarDays().map(({ date, isCurrent, disabled }, i) => {
-              const isSelected = selectedDate && toYMD(date) === toYMD(selectedDate)
-              const isTodayDate = toYMD(date) === toYMD(today)
-              const dayOfWeek = date.getDay()
-              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => !disabled && selectDate(date)}
-                  disabled={disabled}
-                  className={cn(
-                    'aspect-square rounded-xl font-bold transition-all flex items-center justify-center relative',
-                    isCurrent ? 'text-sm min-w-[36px] min-h-[36px]' : 'text-xs min-w-[36px] min-h-[36px]',
-                    disabled && 'line-through opacity-25 cursor-not-allowed',
-                    isSelected && 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/30 scale-105 z-10',
-                    !isSelected && !disabled && isCurrent && 'hover:bg-slate-100 dark:hover:bg-white/5',
-                    !isSelected && !disabled && isWeekend && isCurrent && 'text-rose-400/80 dark:text-rose-400/60',
-                    !isSelected && !disabled && !isWeekend && isCurrent && 'text-slate-700 dark:text-slate-200',
-                    !isCurrent && !isSelected && 'text-slate-300 dark:text-slate-600 opacity-50',
-                    isTodayDate && !isSelected && !disabled && 'ring-2 ring-emerald-400/50 ring-inset text-emerald-600 dark:text-emerald-400 font-black'
-                  )}
-                >
-                  {date.getDate()}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Footer */}
-          <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-            <div className="flex items-center gap-2">
-              {allowClear && value && (
-                <button
-                  type="button"
-                  onClick={clearDate}
-                  className="flex items-center gap-1 text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                  Xóa
-                </button>
-              )}
-              {value && (
-                <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                  {formatDisplay(value).split(',')[1]?.trim()}
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={selectToday}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 text-xs font-black hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors"
-            >
-              Hôm nay
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+  const years = Array.from(
+    { length: today.getFullYear() - 2020 + 1 },
+    (_, i) => 2020 + i
   )
+
+  const slideClass = slideDir === 'left'
+    ? 'animate-in fade-in slide-in-from-left-4'
+    : slideDir === 'right'
+    ? 'animate-in fade-in slide-in-from-right-4'
+    : ''
+
+  // For mobile: render as fixed bottom sheet overlay; for desktop: absolute dropdown
+  const popupPositionClass = isMobile
+    ? 'fixed inset-x-0 bottom-0 z-[200] rounded-t-3xl'
+    : 'absolute top-full left-0 z-[200] mt-2 w-[320px]'
 
   return (
     <div ref={ref} className={cn('relative', className)}>
       {/* Trigger button */}
       <button
         type="button"
-        onClick={() => { if (!open) setMonthPickerMode(false); setOpen(!open) }}
-        aria-expanded={open}
-        aria-haspopup="dialog"
+        onClick={() => setOpen((v) => !v)}
         className={cn(
-          'flex w-full items-center gap-2 px-4 py-2.5 rounded-2xl text-sm font-medium',
-          'bg-slate-50 dark:bg-slate-800/60',
-          'border border-slate-200/60 dark:border-white/10',
-          'text-slate-800 dark:text-slate-100',
-          'focus:outline-none focus:ring-2 focus:ring-emerald-500/20',
-          'transition-all hover:bg-slate-100 dark:hover:bg-slate-700/60',
-          open && 'ring-2 ring-emerald-500/20'
+          'flex w-full items-center gap-2 px-4 py-2.5 rounded-2xl',
+          'bg-slate-50 dark:bg-slate-800',
+          'text-sm font-medium text-slate-800 dark:text-slate-100',
+          'border border-slate-200/60 dark:border-slate-700/60',
+          'hover:bg-slate-100 dark:hover:bg-slate-700/80 transition-colors',
+          'shadow-sm'
         )}
       >
         <Calendar className="h-4 w-4 text-emerald-500 shrink-0" />
-        <span className={cn('flex-1 text-left', !value && 'text-slate-400 dark:text-slate-500')}>
-          {formatDisplay(value)}
+        <span className="flex-1 text-left truncate">
+          {value ? formatDisplay(value) : <span className="text-slate-400">{placeholder}</span>}
         </span>
-        <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform duration-200', open && 'rotate-180')} />
+        {allowClear && value ? (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onChange('') }}
+            className="ml-auto shrink-0 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <ChevronDown
+            className={cn(
+              'h-3.5 w-3.5 text-slate-400 shrink-0 transition-transform duration-200',
+              open && 'rotate-180'
+            )}
+          />
+        )}
       </button>
 
-      {/* Calendar panel */}
-      {open && CalendarPanel}
+      {/* Mobile backdrop */}
+      {isMobile && open && (
+        <div
+          className="fixed inset-0 z-[199] bg-black/30 backdrop-blur-sm"
+          onClick={() => { setOpen(false); setMonthPickerMode(false) }}
+        />
+      )}
+
+      {/* Calendar popup */}
+      {open && (
+        <div
+          className={cn(
+            'ios-blur border border-slate-200/60 dark:border-slate-700/60 shadow-xl',
+            'animate-in fade-in slide-in-from-top-4 duration-200',
+            'overflow-visible',
+            popupPositionClass
+          )}
+        >
+          {/* Mobile drag handle */}
+          {isMobile && (
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
+            </div>
+          )}
+
+          <div className="p-3">
+            {monthPickerMode ? (
+              /* Year quick-selector grid */
+              <div>
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <button
+                    type="button"
+                    onClick={goPrevYear}
+                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="text-sm font-bold text-slate-700 dark:text-slate-200">
+                    {viewDate.getFullYear()}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={goNextYear}
+                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pb-1">
+                  {years.map((yr) => (
+                    <button
+                      key={yr}
+                      type="button"
+                      onClick={() => {
+                        setViewDate((d) => new Date(yr, d.getMonth(), 1))
+                        setMonthPickerMode(false)
+                      }}
+                      className={cn(
+                        'py-1.5 rounded-xl text-sm font-medium transition-colors',
+                        yr === viewDate.getFullYear()
+                          ? 'hoverboard-gradient text-white shadow-sm'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
+                      )}
+                    >
+                      {yr}
+                    </button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-4 gap-1 mt-2">
+                  {MONTHS_SHORT_VI.map((mn, idx) => (
+                    <button
+                      key={mn}
+                      type="button"
+                      onClick={() => {
+                        setViewDate((d) => new Date(d.getFullYear(), idx, 1))
+                        setMonthPickerMode(false)
+                      }}
+                      className={cn(
+                        'py-1.5 rounded-xl text-xs font-medium transition-colors',
+                        idx === viewDate.getMonth()
+                          ? 'hoverboard-gradient text-white shadow-sm'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10'
+                      )}
+                    >
+                      {mn}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              /* Calendar view */
+              <div>
+                {/* Month/Year header */}
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <button
+                    type="button"
+                    onClick={goPrevMonth}
+                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMonthPickerMode(true)}
+                    className="text-sm font-bold text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors px-2 py-1 rounded-lg hover:bg-slate-100 dark:hover:bg-white/10"
+                  >
+                    {MONTHS_VI[viewDate.getMonth()]} {viewDate.getFullYear()}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={goNextMonth}
+                    className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/10 transition-colors"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {/* Day-of-week labels */}
+                <div className="grid grid-cols-7 mb-1">
+                  {DAYS_VI.map((d) => (
+                    <div key={d} className="text-center text-xs font-semibold text-slate-400 dark:text-slate-500 py-1">
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Calendar days grid */}
+                <div className={cn('grid grid-cols-7 gap-y-0.5', slideClass)}>
+                  {calendarDays.map(({ date, isCurrent, disabled }, idx) => {
+                    const dStr = toYMD(date)
+                    const isSelected = dStr === selectedStr
+                    const isToday = dStr === todayStr
+                    const isRecent = isCurrent && date >= sixDaysAgo && date <= today && !isSelected
+                    const isNonCurrentDisabled = !isCurrent
+
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        disabled={disabled || isNonCurrentDisabled}
+                        onClick={() => {
+                          if (!disabled && isCurrent) {
+                            onChange(dStr)
+                            setOpen(false)
+                            setMonthPickerMode(false)
+                          }
+                        }}
+                        className={cn(
+                          'relative h-9 w-full flex items-center justify-center rounded-xl text-sm transition-all',
+                          isSelected && 'hoverboard-gradient text-white font-bold shadow-md shadow-emerald-500/30',
+                          !isSelected && isToday && 'ring-1 ring-emerald-400 text-emerald-600 dark:text-emerald-400 font-semibold',
+                          !isSelected && !isToday && isCurrent && !disabled && 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10',
+                          isRecent && !isSelected && 'bg-emerald-50/30 dark:bg-emerald-900/20',
+                          (disabled && isCurrent) && 'opacity-20 pointer-events-none',
+                          isNonCurrentDisabled && 'opacity-30 pointer-events-none text-slate-400 dark:text-slate-600',
+                        )}
+                      >
+                        {date.getDate()}
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onChange(todayStr)
+                      setOpen(false)
+                      setMonthPickerMode(false)
+                    }}
+                    className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors"
+                  >
+                    Hôm nay
+                  </button>
+                  {allowClear && value && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onChange('')
+                        setOpen(false)
+                        setMonthPickerMode(false)
+                      }}
+                      className="text-xs font-semibold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    >
+                      Xóa
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
