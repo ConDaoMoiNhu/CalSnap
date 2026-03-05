@@ -9,6 +9,8 @@ import { toast } from '@/components/toast'
 
 type Message = { role: 'user' | 'assistant'; content: string; timestamp: string }
 
+type ActionData = Record<string, unknown>
+
 const STORAGE_KEY = 'calsnap_chat_history'
 const TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 ngày
 
@@ -56,7 +58,7 @@ export default function ChatPage() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [hydrated, setHydrated] = useState(false)
-  const [pendingAction, setPendingAction] = useState<{ type: string; data: any; messageIndex: number } | null>(null)
+  const [pendingAction, setPendingAction] = useState<{ type: string; data: ActionData; messageIndex: number } | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -189,7 +191,7 @@ export default function ChatPage() {
     }
   }
 
-  const handleAction = async (type: string, data: any) => {
+  const handleAction = async (type: string, data: ActionData) => {
     setLoading(true)
     try {
       const res = await fetch('/api/assistant/action', {

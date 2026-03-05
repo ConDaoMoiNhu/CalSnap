@@ -3,6 +3,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { updateDailyAdherence, updateJourneyProgress } from './adherence'
+import type { Database } from '@/lib/types'
+
+type MealLogInsert = Database['public']['Tables']['meal_logs']['Insert']
+type MealLogUpdate = Database['public']['Tables']['meal_logs']['Update']
+type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 
 // ✅ Helper: local date tránh UTC shift
 function localDate(date?: Date) {
@@ -33,7 +38,7 @@ export async function saveMeal(data: {
         fat: data.fat,
         image_url: data.imageUrl ?? null,
         logged_at: loggedAt,
-    } as never).select().maybeSingle()
+    } satisfies MealLogInsert).select().maybeSingle()
 
     if (error) return { error: error.message }
 
@@ -75,7 +80,7 @@ export async function getMealsForDate(date: string) {
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(10)
-        return (data as any[]) ?? []
+        return data ?? []
     }
 
     const { data } = await supabase
@@ -85,7 +90,7 @@ export async function getMealsForDate(date: string) {
         .eq('logged_at', date)
         .order('created_at', { ascending: false })
 
-    return (data as any[]) ?? []
+    return data ?? []
 }
 
 export async function relogMeal(meal: {
@@ -110,7 +115,7 @@ export async function relogMeal(meal: {
         fat: meal.fat,
         image_url: null,
         logged_at: today,
-    } as never).select().maybeSingle()
+    } satisfies MealLogInsert).select().maybeSingle()
 
     if (error) return { error: error.message }
 
@@ -136,7 +141,7 @@ export async function toggleFavorite(id: string) {
 
     const { error } = await supabase
         .from('meal_logs')
-        .update({ is_favorite: !(meal?.is_favorite ?? false) } as never)
+        .update({ is_favorite: !(meal?.is_favorite ?? false) } satisfies MealLogUpdate)
         .eq('id', id)
         .eq('user_id', user.id)
 
@@ -171,7 +176,7 @@ export async function getWeeklyCalories() {
         grouped[localDate(d)] = 0 // ✅
     }
 
-    ; (data as any[]).forEach((row) => {
+    ; (data).forEach((row) => {
         if (row.logged_at in grouped) grouped[row.logged_at] += row.calories
     })
 
@@ -189,7 +194,7 @@ export async function updateCalorieGoal(goal: number) {
 
     const { error } = await supabase
         .from('profiles')
-        .upsert({ id: user.id, daily_calorie_goal: goal } as never)
+        .upsert({ id: user.id, daily_calorie_goal: goal } satisfies ProfileUpdate)
 
     if (error) return { error: error.message }
 
@@ -272,8 +277,8 @@ export async function updateMealNutrition(
                 fat: Math.round(newTotals.fat),
             },
         }
-    } catch (err: any) {
+    } catch (err: unknown) {
         console.error('updateMealNutrition crash:', err)
-        return { error: String(err?.message ?? 'Server error') }
+        return { error: String((err as Error)?.message ?? 'Server error') }
     }
 }

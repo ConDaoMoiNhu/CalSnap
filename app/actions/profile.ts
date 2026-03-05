@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 
-export async function updateGoals(formData: FormData): Promise<void> {
+export async function updateGoals(formData: FormData): Promise<{ success?: boolean; error?: string }> {
   const supabase = await createClient()
   const {
     data: { user },
@@ -10,7 +10,7 @@ export async function updateGoals(formData: FormData): Promise<void> {
 
   if (!user) {
     console.error('updateGoals: not authenticated')
-    return
+    return { error: 'Not authenticated' }
   }
 
   const dailyCaloriesRaw = formData.get('daily_calories') as string | null
@@ -29,7 +29,7 @@ export async function updateGoals(formData: FormData): Promise<void> {
 
   if (Object.keys(update).length === 0) {
     console.error('updateGoals: invalid values')
-    return
+    return { error: 'Invalid values' }
   }
 
   const { error } = await supabase
@@ -39,7 +39,8 @@ export async function updateGoals(formData: FormData): Promise<void> {
 
   if (error) {
     console.error('updateGoals error:', error.message)
+    return { error: error.message }
   }
+
+  return { success: true }
 }
-
-

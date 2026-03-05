@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
 
             const jsonMatch = content?.match(/\{[\s\S]*\}/)
             if (!jsonMatch) {
-                return NextResponse.json({ error: 'AI tra ve dinh dang khong hop le. Thu lai.' }, { status: 500 })
+                return NextResponse.json({ error: 'AI trả về định dạng không hợp lệ. Thử lại.' }, { status: 500 })
             }
 
             const parsed = JSON.parse(jsonMatch[0])
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
             const { foodName, calories, protein, carbs, fat, confidence, suggestions } = parsed
             if (typeof foodName !== 'string') {
-                return NextResponse.json({ error: 'AI khong the tinh du thong tin dinh duong.' }, { status: 500 })
+                return NextResponse.json({ error: 'AI không thể tính đủ thông tin dinh dưỡng.' }, { status: 500 })
             }
 
             return NextResponse.json({
@@ -173,13 +173,13 @@ export async function POST(req: NextRequest) {
         console.log('[/api/analyze] Gemini success:', content)
 
         if (!content) {
-            return NextResponse.json({ error: 'Khong nhan duoc phan hoi tu AI' }, { status: 500 })
+            return NextResponse.json({ error: 'Không nhận được phản hồi từ AI.' }, { status: 500 })
         }
 
         const jsonMatch = content.match(/\{[\s\S]*\}/)
         if (!jsonMatch) {
             console.error('[/api/analyze] Cannot parse JSON from:', content)
-            return NextResponse.json({ error: 'AI tra ve dinh dang khong hop le. Thu lai.' }, { status: 500 })
+            return NextResponse.json({ error: 'AI trả về định dạng không hợp lệ. Thử lại.' }, { status: 500 })
         }
 
         const aiJson = JSON.parse(jsonMatch[0])
@@ -192,7 +192,7 @@ export async function POST(req: NextRequest) {
 
         if (typeof foodName !== 'string') {
             console.error('[/api/analyze] Incomplete data:', aiJson)
-            return NextResponse.json({ error: 'AI khong the tinh du thong tin dinh duong. Thu anh ro hon.' }, { status: 500 })
+            return NextResponse.json({ error: 'AI không thể tính đủ thông tin dinh dưỡng. Thử ảnh rõ hơn.' }, { status: 500 })
         }
 
         return NextResponse.json({

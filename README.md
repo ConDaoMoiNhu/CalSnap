@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CalSnap — AI Calorie Tracking App
 
-## Getting Started
+CalSnap is a modern, AI-powered calorie and nutrition tracking app built with Next.js 16, Supabase, and Google Gemini AI.
 
-First, run the development server:
+## Features
+
+- 📸 **Snap & Analyze** — Take or upload a photo of your food and let Gemini AI instantly estimate calories and macros
+- 🤖 **AI Assistant** — Chat with an intelligent nutrition assistant that proactively logs meals from natural language
+- 📊 **Daily Dashboard** — Track calories, protein, carbs, and fat in real time with beautiful progress charts
+- 📅 **Monthly Overview** — Review trends and averages across any month
+- 🏋️ **Fitness Plan** — Personalised plan generated from your BMI, TDEE, and goals (lose weight / maintain / gain muscle)
+- 💧 **Water & Habits** — Log water intake and daily habits with streak tracking
+- ⚖️ **Weight Check-ins** — Track your weight over time with a historical graph
+- 🌙 **Dark / Light Mode** — Fully themed with Tailwind CSS and `next-themes`
+- 📱 **PWA / Mobile-first** — Installable as a Progressive Web App with push notifications
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | [Next.js 16](https://nextjs.org) (App Router, Server Actions) |
+| Database / Auth | [Supabase](https://supabase.com) (PostgreSQL + Row Level Security) |
+| AI | [Google Gemini 2.5 Flash](https://ai.google.dev) via `@google/generative-ai` |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) |
+| Animations | [Framer Motion](https://www.framer.com/motion/) |
+| Charts | [Recharts](https://recharts.org) |
+| Validation | [Zod](https://zod.dev) |
+| Language | TypeScript 5 |
+
+## Setup
+
+### Prerequisites
+
+- Node.js 20+
+- A [Supabase](https://supabase.com) project
+- A [Google AI Studio](https://aistudio.google.com) API key
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/ConDaoMoiNhu/CalSnap.git
+cd CalSnap
+npm install
+```
+
+### 2. Configure environment variables
+
+Create a `.env.local` file in the project root:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+GOOGLE_AI_API_KEY=your-google-ai-api-key
+
+# Optional: Push Notifications (VAPID)
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=your-vapid-public-key
+VAPID_PRIVATE_KEY=your-vapid-private-key
+```
+
+### 3. Set up Supabase
+
+Apply the database migrations from the `supabase/` directory:
+
+```bash
+npx supabase db push
+# or apply migrations manually via the Supabase dashboard
+```
+
+Key tables: `profiles`, `meal_logs`, `plan_adherence`, `weight_checkins`, `daily_habits`
+
+### 4. Run the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+CalSnap/
+├── app/
+│   ├── (app)/              # Authenticated app pages
+│   │   ├── page.tsx        # Dashboard
+│   │   ├── log/            # Meal log
+│   │   ├── scan/           # Food scanner
+│   │   ├── chat/           # Full-page AI chat
+│   │   ├── fitness-plan/   # Personalised fitness plan
+│   │   ├── profile/        # User profile & stats
+│   │   └── monthly-overview/
+│   ├── (auth)/             # Login / Signup / Onboarding
+│   ├── actions/            # Next.js Server Actions
+│   └── api/                # API routes
+│       ├── analyze/        # Gemini food analysis
+│       ├── assistant/      # AI assistant (widget)
+│       └── chat/           # AI chat (full-page)
+├── components/             # Shared React components
+├── lib/
+│   ├── types.ts            # TypeScript types & Supabase schema
+│   ├── env.ts              # Environment variable validation
+│   ├── rate-limit.ts       # In-memory rate limiter
+│   ├── supabase/           # Supabase client factories
+│   └── theme.ts            # Design tokens
+├── supabase/               # Database migrations
+├── instrumentation.ts      # Next.js startup hook (env validation)
+└── middleware.ts            # Auth middleware
+```
 
-## Learn More
+## Development Commands
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run dev      # Start development server
+npm run build    # Production build
+npm run start    # Start production server
+npm run lint     # Run ESLint
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## API Rate Limits
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Endpoint | Limit |
+|---|---|
+| `POST /api/analyze` | 10 requests / minute / IP |
+| `POST /api/assistant` | 15 requests / minute / IP |
+| `POST /api/chat` | 15 requests / minute / IP |
 
-## Deploy on Vercel
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
