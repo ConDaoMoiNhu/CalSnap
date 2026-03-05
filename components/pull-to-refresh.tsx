@@ -147,7 +147,7 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
             <div
                 className="w-full h-full relative z-10 bg-white dark:bg-[#0a0f1c] min-h-screen origin-top shadow-[-10px_0_20px_rgba(0,0,0,0.03)]"
                 style={{
-                    transform: `translateY(${currentY}px)`,
+                    transform: currentY > 0 ? `translateY(${currentY}px)` : undefined,
                     // Dùng spring physics cảm giác giống iOS hơn: bezier curve có nảy nhẹ
                     transition: isPulling ? 'none' : 'transform 0.4s cubic-bezier(0.3, 1.05, 0.4, 1)',
                     // Cbo cong mượt mà mô phỏng app khi bị kéo

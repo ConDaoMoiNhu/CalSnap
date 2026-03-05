@@ -78,7 +78,7 @@ export function MobileBottomNav() {
                   </span>
 
                   <span className={cn(
-                    'text-[10px] font-black uppercase tracking-tighter transition-opacity duration-300 pb-1',
+                    'text-[10px] whitespace-nowrap font-black uppercase tracking-tighter transition-opacity duration-300 pb-1',
                     isCenter ? 'opacity-0 h-0 w-0 overflow-hidden' : 'opacity-100'
                   )}>
                     {label}
