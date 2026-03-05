@@ -85,7 +85,8 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
 
     const weekday = DAYS_VI[date.getDay()]
     const [y, m, day] = d.split('-')
-    return `${weekday}, ${day.padStart(2, '0')}/${m}/${y}`
+    return \
+`${weekday}, ${day.padStart(2, '0')}/${m}/${y}`
   }
 
   const getCalendarDays = () => {
@@ -189,7 +190,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-3 z-[200] overflow-visible bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-2xl border border-slate-200/50 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
+        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 z-[200] w-[320px] bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-2xl border border-slate-200/50 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
           <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 ios-blur -z-10 rounded-[2rem]" />
 
           {/* Header */}
@@ -276,7 +277,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
                   onClick={() => selectDate(date, isCurrent)}
                   disabled={disabled || !isCurrent}
                   className={cn(
-                    'aspect-square rounded-xl text-sm font-bold transition-all min-w-[38px] min-h-[38px] flex items-center justify-center relative',
+                    'aspect-square rounded-xl text-sm font-bold transition-all min-w-[34px] min-h-[34px] flex items-center justify-center relative',
                     !isCurrent && 'pointer-events-none opacity-30',
                     disabled && isCurrent && 'opacity-20 cursor-not-allowed',
                     isSelected && 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/25 scale-110 z-10',
@@ -311,7 +312,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
             <button
               type="button"
               onClick={selectToday}
-              className="text-sm font-semibold text-emerald-600 hover:text-emerald-700"
+              className="text-sm font-semibold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300"
             >
               Hôm nay
             </button>
