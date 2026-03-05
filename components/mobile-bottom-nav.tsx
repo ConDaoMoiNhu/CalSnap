@@ -13,6 +13,8 @@ const navItems = [
   { href: '/fitness-plan', label: 'Kế hoạch', icon: ClipboardList },
 ]
 
+import { triggerHaptic, playFeedbackSound } from '@/lib/feedback'
+
 export function MobileBottomNav() {
   const pathname = usePathname()
   const router = useRouter()
@@ -40,17 +42,9 @@ export function MobileBottomNav() {
                 if (isActive) {
                   e.preventDefault()
                   window.scrollTo({ top: 0, behavior: 'smooth' })
-                  router.refresh()
-                  // Advanced double-tap Haptic feedback like iOS
-                  if (typeof window !== 'undefined' && 'vibrate' in navigator) {
-                    // Start refreshing with a subtle tap
-                    navigator.vibrate([10]);
 
-                    // Simulate completion of scroll/refresh with a slightly firmer tap
-                    setTimeout(() => {
-                      try { navigator.vibrate([15]); } catch (e) { }
-                    }, 400); // 400ms is approx duration of smooth scroll to top
-                  }
+                  // Trigger programmatic refresh with feedback
+                  window.dispatchEvent(new CustomEvent('calsnap:trigger-refresh'))
                 }
               }
 

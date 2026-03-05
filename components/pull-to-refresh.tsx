@@ -4,18 +4,9 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
-// Hàm tạo feedback haptic đa nền tảng an toàn
-const triggerHaptic = (type: 'light' | 'medium' | 'heavy' | 'success') => {
-    if (typeof window === 'undefined' || !('vibrate' in window.navigator)) return
-    try {
-        switch (type) {
-            case 'light': navigator.vibrate(10); break;
-            case 'medium': navigator.vibrate(20); break;
-            case 'heavy': navigator.vibrate(30); break;
-            case 'success': navigator.vibrate([15, 50, 20]); break;
-        }
-    } catch (e) { }
-}
+import { triggerHaptic, playFeedbackSound } from '@/lib/feedback'
+
+// Remove local triggerHaptic implementation as it's now shared
 
 export function PullToRefresh({ children }: { children: React.ReactNode }) {
     const [startY, setStartY] = useState(0)
@@ -96,6 +87,23 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
             }
         }
 
+        const handleExternalRefresh = () => {
+            if (isRefreshing) return;
+            setIsRefreshing(true);
+            setCurrentY(REFRESH_HEIGHT);
+            triggerHaptic('light');
+            playFeedbackSound('tick');
+            router.refresh();
+
+            setTimeout(() => {
+                setIsRefreshing(false);
+                setCurrentY(0);
+                triggerHaptic('success');
+            }, 1000);
+        };
+
+        window.addEventListener('calsnap:trigger-refresh', handleExternalRefresh);
+
         const element = contentRef.current
         if (element) {
             // Quan trọng: { passive: false } ở touchmove để có thể preventDefault()
@@ -105,6 +113,7 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
         }
 
         return () => {
+            window.removeEventListener('calsnap:trigger-refresh', handleExternalRefresh);
             if (element) {
                 element.removeEventListener('touchstart', handleTouchStart)
                 element.removeEventListener('touchmove', handleTouchMove)
