@@ -332,31 +332,24 @@ export default function ChatPage() {
       {/* Background Decor */}
       <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/5 via-transparent to-transparent pointer-events-none" />
 
-      {/* Header - Fixed Top */}
-      <div className="ios-blur z-30 px-6 py-4 flex items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 bg-white/70 dark:bg-slate-900/70 shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl hoverboard-gradient flex items-center justify-center shadow-lg shadow-emerald-500/20">
-            <Sparkles className="text-white h-5 w-5" />
-          </div>
-          <div>
-            <h1 className="text-slate-900 dark:text-white text-lg font-extrabold tracking-tight">
-              CalSnap AI
-            </h1>
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[10px] uppercase tracking-widest font-black text-emerald-600 dark:text-emerald-400">
-                Online
-              </span>
-            </div>
-          </div>
+      {/* Mini bar: status + clear button */}
+      <div className="shrink-0 flex items-center justify-between px-4 pt-3 pb-1">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-[11px] uppercase tracking-widest font-black text-emerald-600 dark:text-emerald-400">
+            Online
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={clearChat}
-          className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-all active:scale-90 flex items-center justify-center"
-        >
-          <Trash className="h-4.5 w-4.5" />
-        </button>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={clearChat}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:bg-red-50 hover:text-red-500 transition-all active:scale-90 text-xs font-bold"
+          >
+            <Trash className="h-3.5 w-3.5" />
+            Xóa chat
+          </button>
+        )}
       </div>
 
       {/* Messages - Scrollable Middle */}
@@ -365,29 +358,29 @@ export default function ChatPage() {
         variants={containerVariants}
         initial="hidden"
         animate="show"
-        className="flex-1 overflow-y-auto px-4 py-8 flex flex-col gap-6 scroll-smooth scrollbar-hide pb-32"
+        className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 scroll-smooth scrollbar-hide"
       >
         {hydrated && messages.length === 0 && !loading && (
           <motion.div
             variants={messageVariants}
-            className="flex-1 flex flex-col items-center justify-center text-center py-20"
+            className="flex-1 flex flex-col items-center justify-center text-center py-6"
           >
             <div className="relative group">
               <div className="absolute inset-0 bg-emerald-500 blur-3xl opacity-20 group-hover:opacity-40 transition-opacity" />
-              <div className="w-24 h-24 rounded-[2.5rem] hoverboard-gradient flex items-center justify-center mb-8 shadow-2xl relative z-10">
-                <Sparkles className="text-white h-12 w-12 animate-pulse" />
+              <div className="w-20 h-20 rounded-[2rem] hoverboard-gradient flex items-center justify-center mb-5 shadow-2xl relative z-10">
+                <Sparkles className="text-white h-10 w-10 animate-pulse" />
               </div>
             </div>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3 tracking-tighter">CalSnap AI</h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-[280px] leading-relaxed text-sm font-bold opacity-80">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2 tracking-tighter">CalSnap AI</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-[260px] leading-relaxed text-sm font-medium opacity-80">
               Trợ lý sức khỏe thông minh của riêng anh. Hãy bắt đầu bằng một bữa ăn nhé!
             </p>
-            <div className="flex flex-wrap gap-2.5 justify-center mt-12 px-6">
+            <div className="grid grid-cols-2 gap-2 mt-6 w-full max-w-sm px-2">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => sendMessage(s)}
-                  className="px-5 py-3.5 ios-glass rounded-2xl text-[13px] font-black text-slate-700 dark:text-slate-200 hover:border-emerald-500 transition-all shadow-sm active:scale-95"
+                  className="px-4 py-3.5 ios-glass rounded-2xl text-[13px] font-bold text-slate-700 dark:text-slate-200 hover:border-emerald-500 transition-all shadow-sm active:scale-95 text-left leading-snug"
                 >
                   {s}
                 </button>
@@ -465,17 +458,18 @@ export default function ChatPage() {
         )}
       </motion.div>
 
-      {/* Input Area - Fixed Bottom */}
-      <div className="absolute bottom-6 left-4 right-4 z-50">
-        <div className="max-w-3xl mx-auto ios-glass ios-shadow rounded-[2.5rem] p-2 flex items-center gap-2">
+      {/* Input Area - part of flex flow */}
+      <div className="shrink-0 px-4 pb-4 pt-2">
+        <div className="ios-glass ios-shadow rounded-[2.5rem] p-2 flex items-center gap-2">
           <div className="flex-1 relative group pl-3">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmit(e as unknown as React.FormEvent)}
               placeholder="Nhắn cho trợ lý CalSnap..."
               disabled={loading}
-              className="w-full bg-transparent py-4 text-[16px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all font-bold"
+              className="w-full bg-transparent py-3.5 text-[16px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none transition-all font-medium"
             />
           </div>
           <button
