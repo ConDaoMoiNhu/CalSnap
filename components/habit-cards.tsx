@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Footprints, Droplets, Dumbbell, Plus, Minus } from 'lucide-react'
 import { upsertSteps, upsertWater, upsertExercise, type ExerciseType } from '@/app/actions/habits'
 import { toast } from 'sonner'
@@ -32,10 +32,12 @@ export function HabitCards({ date, initialHabits, onUpdate, className }: HabitCa
   const [editingExercise, setEditingExercise] = useState(false)
   const [exMinutes, setExMinutes] = useState('')
   const [exType, setExType] = useState<ExerciseType>('Walking')
+  const pendingWater = useRef(false)
+  const pendingSteps = useRef(false)
 
   useEffect(() => {
-    setSteps(initialHabits?.steps ?? 0)
-    setWaterMl(initialHabits?.water_ml ?? 0)
+    if (!pendingSteps.current) setSteps(initialHabits?.steps ?? 0)
+    if (!pendingWater.current) setWaterMl(initialHabits?.water_ml ?? 0)
     setExerciseMinutes(initialHabits?.exercise_minutes ?? 0)
     setExerciseCalories(initialHabits?.exercise_calories ?? 0)
   }, [initialHabits])
@@ -85,21 +87,29 @@ export function HabitCards({ date, initialHabits, onUpdate, className }: HabitCa
   const addSteps = async (s: number) => {
     const newVal = steps + s
     const prev = steps
+    pendingSteps.current = true
     setSteps(newVal) // optimistic
-    onUpdate?.()
     const res = await upsertSteps(date, newVal)
+    pendingSteps.current = false
     if (res.error) { setSteps(prev); toast.error(res.error) }
-    else window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
+    else {
+      onUpdate?.()
+      window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
+    }
   }
 
   const addWater = async (ml: number) => {
     const newMl = Math.max(0, waterMl + ml)
     const prev = waterMl
+    pendingWater.current = true
     setWaterMl(newMl) // optimistic
-    onUpdate?.()
-    window.dispatchEvent(new CustomEvent('calsnap:water-updated', { detail: { date, water_ml: newMl } }))
     const res = await upsertWater(date, newMl)
+    pendingWater.current = false
     if (res.error) { setWaterMl(prev); toast.error(res.error) }
+    else {
+      onUpdate?.()
+      window.dispatchEvent(new CustomEvent('calsnap:water-updated', { detail: { date, water_ml: newMl } }))
+    }
   }
 
   return (
