@@ -49,50 +49,57 @@ export function HabitCards({ date, initialHabits, onUpdate, className }: HabitCa
   const handleSaveSteps = async () => {
     const val = parseInt(stepsInput, 10)
     if (isNaN(val) || val < 0) return
+    const prev = steps
     setEditingSteps(false)
+    setSteps(val) // optimistic
+    onUpdate?.()
     const res = await upsertSteps(date, val)
-    if (res.error) toast.error(res.error)
-    else {
-      setSteps(val);
-      onUpdate?.();
-      window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
-    }
+    if (res.error) { setSteps(prev); toast.error(res.error) }
+    else window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
   }
 
   const handleSaveExercise = async () => {
     const mins = parseInt(exMinutes, 10)
     if (isNaN(mins) || mins <= 0) return
+    const prevMins = exerciseMinutes
+    const prevCal = exerciseCalories
+    const estimatedCal = exerciseCalories + Math.round(mins * 7)
     setEditingExercise(false)
-    const res = await upsertExercise(date, mins, exType)
-    if ((res as any).error) { toast.error((res as any).error); return }
-    const newCal = (res as any).newCalories ?? exerciseCalories
-    setExerciseMinutes((p) => p + mins)
-    setExerciseCalories(newCal)
+    setExerciseMinutes((p) => p + mins) // optimistic
+    setExerciseCalories(estimatedCal)
     setExMinutes('')
+    onUpdate?.(estimatedCal)
+    const res = await upsertExercise(date, mins, exType)
+    if ((res as any).error) {
+      setExerciseMinutes(prevMins)
+      setExerciseCalories(prevCal)
+      toast.error((res as any).error)
+      return
+    }
+    const newCal = (res as any).newCalories ?? estimatedCal
+    setExerciseCalories(newCal)
     onUpdate?.(newCal)
     window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
   }
 
   const addSteps = async (s: number) => {
     const newVal = steps + s
+    const prev = steps
+    setSteps(newVal) // optimistic
+    onUpdate?.()
     const res = await upsertSteps(date, newVal)
-    if (res.error) toast.error(res.error)
-    else {
-      setSteps(newVal);
-      onUpdate?.();
-      window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
-    }
+    if (res.error) { setSteps(prev); toast.error(res.error) }
+    else window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
   }
 
   const addWater = async (ml: number) => {
     const newMl = Math.max(0, waterMl + ml)
+    const prev = waterMl
+    setWaterMl(newMl) // optimistic
+    onUpdate?.()
+    window.dispatchEvent(new CustomEvent('calsnap:water-updated', { detail: { date, water_ml: newMl } }))
     const res = await upsertWater(date, newMl)
-    if (res.error) toast.error(res.error)
-    else {
-      setWaterMl(newMl);
-      onUpdate?.();
-      window.dispatchEvent(new CustomEvent('calsnap:water-updated', { detail: { date, water_ml: newMl } }))
-    }
+    if (res.error) { setWaterMl(prev); toast.error(res.error) }
   }
 
   return (
