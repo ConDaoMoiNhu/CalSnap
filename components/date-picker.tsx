@@ -129,19 +129,21 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
     if (open && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect()
       const calendarHeight = 420
+      const width = Math.max(320, Math.min(rect.width, window.innerWidth - 16))
+      const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)
+
       const spaceBelow = window.innerHeight - rect.bottom - 8
       const spaceAbove = rect.top - 8
       const showAbove = spaceBelow < calendarHeight && spaceAbove > spaceBelow
-      const width = Math.max(320, rect.width)
-      const left = Math.min(Math.max(8, rect.left), window.innerWidth - width - 8)
 
-      setPortalStyle({
-        position: 'fixed',
-        top: showAbove ? rect.top - calendarHeight - 8 : rect.bottom + 8,
-        left,
-        width,
-        zIndex: 9999,
-      })
+      let top = showAbove
+        ? rect.top - calendarHeight - 8
+        : rect.bottom + 8
+
+      // Clamp so never off-screen
+      top = Math.max(8, Math.min(top, window.innerHeight - calendarHeight - 8))
+
+      setPortalStyle({ position: 'fixed', top, left, width, zIndex: 9999 })
     }
   }, [open])
 
