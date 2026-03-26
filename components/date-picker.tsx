@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -120,10 +121,93 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
   }
 
   const selectedDate = value ? new Date(value + 'T12:00:00') : null
+  const [portalStyle, setPortalStyle] = useState<React.CSSProperties>({})
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  // Position calendar below the button using fixed coords
+  useEffect(() => {
+    if (open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setPortalStyle({
+        position: 'fixed',
+        top: rect.bottom + 8,
+        left: Math.max(8, rect.left),
+        width: Math.max(320, rect.width),
+        zIndex: 9999,
+      })
+    }
+  }, [open])
+
+  const CalendarDropdown = (
+    <div
+      style={portalStyle}
+      className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-2xl border border-slate-200/50 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-200"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <button type="button" onClick={goPrevMonth} className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors" aria-label="Tháng trước">
+          <ChevronLeft className="h-5 w-5" />
+        </button>
+        <span className="font-bold text-slate-900 dark:text-white text-base tracking-tight">
+          {MONTHS_VI[viewDate.getMonth()]} {viewDate.getFullYear()}
+        </span>
+        <button type="button" onClick={goNextMonth} className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50" aria-label="Tháng sau" disabled={!!(maxDate && new Date(viewDate.getFullYear(), viewDate.getMonth() + 1) > maxDate)}>
+          <ChevronRight className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Weekday headers */}
+      <div className="grid grid-cols-7 gap-1 mb-2">
+        {DAYS_VI.map((day) => (
+          <div key={day} className="text-center text-[11px] font-semibold text-slate-400 dark:text-slate-500 py-1 uppercase tracking-widest">
+            {day}
+          </div>
+        ))}
+      </div>
+
+      {/* Calendar grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {getCalendarDays().map(({ date, isCurrent, disabled }, i) => {
+          const isSelected = selectedDate && toYMD(date) === toYMD(selectedDate)
+          const isTodayDate = toYMD(date) === toYMD(today)
+          return (
+            <button
+              key={i}
+              type="button"
+              onClick={() => selectDate(date)}
+              disabled={disabled}
+              className={cn(
+                'aspect-square rounded-xl text-sm font-bold transition-all min-w-[38px] min-h-[38px] flex items-center justify-center relative',
+                disabled && 'opacity-20 cursor-not-allowed',
+                isSelected && 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/25 scale-110',
+                !isSelected && !disabled && 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200',
+                !isCurrent && !isSelected && 'text-slate-300 dark:text-slate-600',
+                isTodayDate && !isSelected && !disabled && 'text-emerald-600 dark:text-emerald-400'
+              )}
+            >
+              {date.getDate()}
+              {isTodayDate && !isSelected && (
+                <div className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-500" />
+              )}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-between mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
+        {allowClear ? (
+          <button type="button" onClick={clearDate} className="text-sm font-semibold text-slate-500 hover:text-slate-700">Xóa</button>
+        ) : <span />}
+        <button type="button" onClick={selectToday} className="text-sm font-semibold text-emerald-600 hover:text-emerald-700">Hôm nay</button>
+      </div>
+    </div>
+  )
 
   return (
     <div ref={ref} className={cn('relative', className)}>
       <button
+        ref={buttonRef}
         type="button"
         onClick={() => setOpen(!open)}
         className="flex w-full items-center gap-2 px-4 py-2.5 rounded-2xl bg-slate-50 text-sm font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 border-none"
@@ -132,94 +216,7 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
         <span className={value ? '' : 'text-slate-400'}>{formatDisplay(value)}</span>
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 right-0 mt-3 z-[100] bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-2xl border border-slate-200/50 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-300">
-          <div className="absolute inset-0 bg-white/80 dark:bg-slate-900/80 ios-blur -z-10 rounded-[2rem]" />
-          {/* Header */}
-          <div className="flex items-center justify-between mb-4">
-            <button
-              type="button"
-              onClick={goPrevMonth}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
-              aria-label="Tháng trước"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <span className="font-extrabold text-slate-900 dark:text-white text-base tracking-tight">
-              {MONTHS_VI[viewDate.getMonth()]} {viewDate.getFullYear()}
-            </span>
-            <button
-              type="button"
-              onClick={goNextMonth}
-              className="p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors disabled:opacity-50"
-              aria-label="Tháng sau"
-              disabled={!!(maxDate && new Date(viewDate.getFullYear(), viewDate.getMonth() + 1) > maxDate)}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
-
-          {/* Weekday headers */}
-          <div className="grid grid-cols-7 gap-1 mb-2">
-            {DAYS_VI.map((day) => (
-              <div key={day} className="text-center text-[11px] font-black text-slate-400 dark:text-slate-500 py-1 uppercase tracking-widest">
-                {day}
-              </div>
-            ))}
-          </div>
-
-          {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {getCalendarDays().map(({ date, isCurrent, disabled }, i) => {
-              const isSelected = selectedDate && toYMD(date) === toYMD(selectedDate)
-              const isTodayDate = toYMD(date) === toYMD(today)
-              return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => selectDate(date)}
-                  disabled={disabled}
-                  className={cn(
-                    'aspect-square rounded-xl text-sm font-bold transition-all min-w-[38px] min-h-[38px] flex items-center justify-center relative',
-                    disabled && 'opacity-20 cursor-not-allowed',
-                    isSelected && 'hoverboard-gradient text-white shadow-lg shadow-emerald-500/25 scale-110 z-10',
-                    !isSelected && !disabled && 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-slate-200',
-                    !isCurrent && !isSelected && 'text-slate-300 dark:text-slate-600',
-                    isTodayDate && !isSelected && !disabled && 'text-emerald-600 dark:text-emerald-400'
-                  )}
-                >
-                  {date.getDate()}
-                  {isTodayDate && !isSelected && (
-                    <div className="absolute bottom-1 w-1 h-1 rounded-full bg-emerald-500" />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-
-          {/* Footer */}
-          <div className="flex justify-between mt-4 pt-3 border-t border-slate-100">
-            {allowClear ? (
-              <button
-                type="button"
-                onClick={clearDate}
-                className="text-sm font-semibold text-slate-500 hover:text-slate-700"
-              >
-                Xóa
-              </button>
-            ) : (
-              <span />
-            )}
-            <button
-              type="button"
-              onClick={selectToday}
-              className="text-sm font-semibold text-emerald-600 hover:text-emerald-700"
-            >
-              Hôm nay
-            </button>
-          </div>
-        </div>
-      )}
+      {open && typeof document !== 'undefined' && createPortal(CalendarDropdown, document.body)}
     </div>
   )
 }
