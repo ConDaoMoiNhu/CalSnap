@@ -21,6 +21,7 @@ interface MealSummary { calories: number; protein: number; carbs: number; fat: n
 export default function DashboardPage() {
   const [profile, setProfile] = useState<DbProfile | null>(null)
   const [totals, setTotals] = useState<MealSummary | null>(null)
+  const [loading, setLoading] = useState(true)
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0])
   const [recentMeals, setRecentMeals] = useState<any[]>([])
   const [weeklyCalories, setWeeklyCalories] = useState<{ date: string; calories: number; label?: string }[]>([])
@@ -56,9 +57,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true)
       const supabase = createClient()
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) { setLoading(false); return }
       const [{ data: prof }, { data: meals }, { data: habitsRow }] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', user.id).single(),
         supabase.from('meal_logs').select('calories, protein, carbs, fat').eq('user_id', user.id).eq('logged_at', date),
@@ -76,6 +78,7 @@ export default function DashboardPage() {
       if (recentMeals.length === 0) {
         try { setRecentMeals((await getMealsForDate('recent') as any[]) ?? []) } catch { }
       }
+      setLoading(false)
     }
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -258,14 +261,40 @@ export default function DashboardPage() {
     <div className="space-y-3 max-w-5xl mx-auto page-enter pb-40">
 
       {/* ── SKELETON ── */}
-      {!profile && !totals && (
+      {loading && (
         <div className="space-y-3 animate-pulse">
-          <div className="h-56 rounded-[2rem] bg-slate-100 dark:bg-slate-800" />
+          {/* Calorie/macro header skeleton */}
+          <div className="rounded-[2rem] bg-slate-200 dark:bg-slate-700 p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="space-y-2">
+                <div className="h-3 w-24 bg-slate-300 dark:bg-slate-600 rounded-xl" />
+                <div className="h-6 w-40 bg-slate-300 dark:bg-slate-600 rounded-xl" />
+              </div>
+              <div className="w-9 h-9 rounded-full bg-slate-300 dark:bg-slate-600" />
+            </div>
+            <div className="flex items-center gap-5">
+              <div className="w-44 h-44 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+              <div className="flex-1 space-y-3">
+                <div className="grid grid-cols-3 gap-2">
+                  <div className="h-12 rounded-xl bg-slate-300 dark:bg-slate-600" />
+                  <div className="h-12 rounded-xl bg-slate-300 dark:bg-slate-600" />
+                  <div className="h-12 rounded-xl bg-slate-300 dark:bg-slate-600" />
+                </div>
+                <div className="flex gap-2">
+                  <div className="h-6 w-16 rounded-full bg-slate-300 dark:bg-slate-600" />
+                  <div className="h-6 w-16 rounded-full bg-slate-300 dark:bg-slate-600" />
+                  <div className="h-6 w-16 rounded-full bg-slate-300 dark:bg-slate-600" />
+                </div>
+              </div>
+            </div>
+            <div className="h-10 rounded-2xl bg-slate-300 dark:bg-slate-600" />
+          </div>
+          {/* HabitCards + chart skeleton */}
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="h-80 rounded-[2rem] bg-slate-100 dark:bg-slate-800" />
+            <div className="h-80 rounded-[2rem] bg-slate-200 dark:bg-slate-700" />
             <div className="space-y-3">
-              <div className="h-36 rounded-[2rem] bg-slate-100 dark:bg-slate-800" />
-              <div className="h-40 rounded-[2rem] bg-slate-100 dark:bg-slate-800" />
+              <div className="h-36 rounded-[2rem] bg-slate-200 dark:bg-slate-700" />
+              <div className="h-40 rounded-[2rem] bg-slate-200 dark:bg-slate-700" />
             </div>
           </div>
         </div>

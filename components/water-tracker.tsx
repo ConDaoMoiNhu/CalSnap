@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Droplets } from 'lucide-react'
 import { addWater } from '@/app/actions/water'
 
@@ -11,18 +11,32 @@ interface WaterTrackerProps {
 
 export function WaterTracker({ currentMl: initial, goalMl }: WaterTrackerProps) {
   const [current, setCurrent] = useState(initial)
-  const [loading, setLoading] = useState(false)
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pendingRef = useRef(0)
 
   const pct = goalMl > 0 ? Math.min(100, Math.round((current / goalMl) * 100)) : 0
   const cups = Math.round(current / 250)
 
-  const handleAdd = async (ml: number) => {
-    setLoading(true)
-    const result = await addWater(ml)
-    if ((result as any)?.success) {
-      setCurrent((result as any).total)
-    }
-    setLoading(false)
+  const handleAdd = (ml: number) => {
+    // Optimistic update — UI reflects change immediately
+    setCurrent((prev) => prev + ml)
+    pendingRef.current += ml
+
+    // Debounce: batch rapid clicks into one server call after 200ms of inactivity
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(async () => {
+      const toSend = pendingRef.current
+      pendingRef.current = 0
+      const prevValue = current
+      const result = await addWater(toSend)
+      if ((result as any)?.success) {
+        // Sync to server truth
+        setCurrent((result as any).total)
+      } else {
+        // Revert on error
+        setCurrent(prevValue)
+      }
+    }, 200)
   }
 
   return (
@@ -65,8 +79,7 @@ export function WaterTracker({ currentMl: initial, goalMl }: WaterTrackerProps) 
           <button
             key={ml}
             onClick={() => handleAdd(ml)}
-            disabled={loading}
-            className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-black hover:bg-blue-100 active:scale-95 transition-all disabled:opacity-50 shadow-sm"
+            className="flex-1 py-2 rounded-xl bg-blue-50 text-blue-600 text-xs font-black hover:bg-blue-100 active:scale-95 transition-all shadow-sm"
           >
             +{ml}ml
           </button>
