@@ -32,7 +32,7 @@ export default function AppLayout({
                     </form>
                 </div>
             </div>
-            <main className="pb-24 md:pb-8 px-4 md:px-8 pt-16 md:pt-6 max-w-6xl mx-auto min-w-0 overflow-x-hidden page-enter">
+            <main className="pb-24 md:pb-8 px-4 md:px-8 pt-16 md:pt-6 max-w-6xl mx-auto min-w-0 overflow-x-hidden">
                 {children}
             </main>
             <MobileBottomNav />
