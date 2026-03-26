@@ -147,8 +147,8 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
 
   const CalendarDropdown = (
     <div
-      style={portalStyle}
-      className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 shadow-2xl border border-slate-200/50 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-200"
+      style={{ ...portalStyle, boxShadow: '0 25px 60px rgba(0,0,0,0.35), 0 8px 20px rgba(0,0,0,0.2)' }}
+      className="bg-white dark:bg-slate-900 rounded-[2rem] p-5 border border-slate-200/50 dark:border-white/10 animate-in fade-in slide-in-from-top-4 duration-200"
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -223,7 +223,17 @@ export function DatePicker({ value, max, onChange, placeholder = 'Chọn ngày',
         <span className={value ? '' : 'text-slate-400'}>{formatDisplay(value)}</span>
       </button>
 
-      {open && typeof document !== 'undefined' && createPortal(CalendarDropdown, document.body)}
+      {open && typeof document !== 'undefined' && createPortal(
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 z-[9998]"
+            onClick={() => setOpen(false)}
+          />
+          {CalendarDropdown}
+        </>,
+        document.body
+      )}
     </div>
   )
 }
