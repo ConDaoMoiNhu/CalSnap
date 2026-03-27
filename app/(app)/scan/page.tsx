@@ -296,12 +296,25 @@ Người dùng muốn điều chỉnh/thêm: "${adjustment}". Hãy tính lại t
                         <div className="relative h-60 w-full">
                             <Image src={imageData} alt="Food preview" fill className="object-cover" unoptimized />
                             {state === 'analyzing' && (
-                                <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
-                                    <div className="w-14 h-14 rounded-full bg-white/10 border border-white/20 flex items-center justify-center">
-                                        <Loader2 className="h-6 w-6 animate-spin text-emerald-400" />
+                                <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+                                    {/* Scan beam sweeping the image */}
+                                    <span className="scan-beam" />
+                                    {/* Corner brackets */}
+                                    <span className="scan-corner scan-corner-tl" />
+                                    <span className="scan-corner scan-corner-tr" />
+                                    <span className="scan-corner scan-corner-bl" />
+                                    <span className="scan-corner scan-corner-br" />
+                                    {/* Sparkles icon with spin-fade-in */}
+                                    <div className="spin-fade-in w-14 h-14 rounded-full bg-emerald-500/20 border border-emerald-400/40 flex items-center justify-center">
+                                        <Sparkles className="h-6 w-6 text-emerald-400" />
                                     </div>
                                     <p className="text-white text-sm font-semibold">Đang phân tích...</p>
-                                    <p className="text-white/50 text-xs">AI đang nhận diện món ăn</p>
+                                    {/* Bounce dot loader */}
+                                    <div className="flex gap-1.5 text-emerald-400">
+                                        <span className="bounce-dot" />
+                                        <span className="bounce-dot" />
+                                        <span className="bounce-dot" />
+                                    </div>
                                     {/* Progress bar */}
                                     <div className="w-36 h-1.5 bg-white/20 rounded-full overflow-hidden">
                                         <div
@@ -481,8 +494,8 @@ Người dùng muốn điều chỉnh/thêm: "${adjustment}". Hãy tính lại t
                         </button>
                     ) : (
                         <div className="flex items-center justify-center gap-2 py-3 text-emerald-600 font-bold">
-                            <CheckCircle className="h-5 w-5" />
-                            Đã lưu vào nhật ký!
+                            <CheckCircle className="h-5 w-5 check-pop" />
+                            <span className="check-pop" style={{ animationDelay: '0.1s' }}>Đã lưu vào nhật ký!</span>
                         </div>
                     )}
                 </div>
