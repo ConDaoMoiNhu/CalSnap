@@ -1,6 +1,8 @@
 // app/(app)/log/page.tsx
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import { getMealsForDate, relogMeal, toggleFavorite, deleteMeal } from '@/app/actions/meals'
 import { MealCard } from '@/components/meal-card'
