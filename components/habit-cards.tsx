@@ -34,10 +34,23 @@ export function HabitCards({ date, initialHabits, onUpdate, className }: HabitCa
   const [exType, setExType] = useState<ExerciseType>('Walking')
   const pendingWater = useRef(false)
   const pendingSteps = useRef(false)
+  const lastWrittenSteps = useRef<number | null>(null)
+  const lastWrittenWater = useRef<number | null>(null)
 
   useEffect(() => {
-    if (!pendingSteps.current) setSteps(initialHabits?.steps ?? 0)
-    if (!pendingWater.current) setWaterMl(initialHabits?.water_ml ?? 0)
+    const incomingSteps = initialHabits?.steps ?? 0
+    const incomingWater = initialHabits?.water_ml ?? 0
+    // Only sync steps/water from props when:
+    // 1. No pending optimistic update, OR
+    // 2. Incoming value matches what we last wrote (confirms server saved correctly)
+    if (!pendingSteps.current || incomingSteps === lastWrittenSteps.current) {
+      setSteps(incomingSteps)
+      pendingSteps.current = false
+    }
+    if (!pendingWater.current || incomingWater === lastWrittenWater.current) {
+      setWaterMl(incomingWater)
+      pendingWater.current = false
+    }
     setExerciseMinutes(initialHabits?.exercise_minutes ?? 0)
     setExerciseCalories(initialHabits?.exercise_calories ?? 0)
   }, [initialHabits])
@@ -88,11 +101,15 @@ export function HabitCards({ date, initialHabits, onUpdate, className }: HabitCa
     const newVal = steps + s
     const prev = steps
     pendingSteps.current = true
+    lastWrittenSteps.current = newVal
     setSteps(newVal) // optimistic
     const res = await upsertSteps(date, newVal)
-    pendingSteps.current = false
-    if (res.error) { setSteps(prev); toast.error(res.error) }
-    else {
+    if (res.error) {
+      pendingSteps.current = false
+      lastWrittenSteps.current = null
+      setSteps(prev)
+      toast.error(res.error)
+    } else {
       onUpdate?.()
       window.dispatchEvent(new CustomEvent('calsnap:habit-updated', { detail: { date } }))
     }
@@ -102,11 +119,15 @@ export function HabitCards({ date, initialHabits, onUpdate, className }: HabitCa
     const newMl = Math.max(0, waterMl + ml)
     const prev = waterMl
     pendingWater.current = true
+    lastWrittenWater.current = newMl
     setWaterMl(newMl) // optimistic
     const res = await upsertWater(date, newMl)
-    pendingWater.current = false
-    if (res.error) { setWaterMl(prev); toast.error(res.error) }
-    else {
+    if (res.error) {
+      pendingWater.current = false
+      lastWrittenWater.current = null
+      setWaterMl(prev)
+      toast.error(res.error)
+    } else {
       onUpdate?.()
       window.dispatchEvent(new CustomEvent('calsnap:water-updated', { detail: { date, water_ml: newMl } }))
     }
