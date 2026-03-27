@@ -634,11 +634,12 @@ body {
 .dark .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    oklch(0.18 0.018 240) 0%,
-    oklch(0.24 0.022 240) 40%,
-    oklch(0.18 0.018 240) 80%
+    oklch(0.20 0.018 240) 0%,
+    oklch(0.30 0.025 240) 40%,
+    oklch(0.20 0.018 240) 80%
   );
   background-size: 800px 100%;
+  animation: shimmerWave 1.4s ease-in-out infinite;
 }
 
 /* Spin with fade-in for AI loading */
