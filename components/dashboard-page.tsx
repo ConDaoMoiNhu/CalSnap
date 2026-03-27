@@ -262,28 +262,28 @@ export default function DashboardPage() {
 
       {/* ── SKELETON ── */}
       {loading && (
-        <div className="space-y-3 animate-pulse">
+        <div className="space-y-3">
           {/* Calorie/macro header skeleton */}
-          <div className="rounded-[2rem] bg-slate-200 dark:bg-slate-700 p-5 space-y-3">
+          <div className="skeleton-shimmer rounded-[2rem] p-5 space-y-3" style={{ height: '240px' }}>
             <div className="flex items-center justify-between">
               <div className="space-y-2">
-                <div className="h-3 w-24 bg-slate-300 dark:bg-slate-600 rounded-xl" />
-                <div className="h-6 w-40 bg-slate-300 dark:bg-slate-600 rounded-xl" />
+                <div className="skeleton-shimmer h-3 w-24 rounded-xl" style={{ animationDelay: '0.05s' }} />
+                <div className="skeleton-shimmer h-6 w-40 rounded-xl" style={{ animationDelay: '0.1s' }} />
               </div>
-              <div className="w-9 h-9 rounded-full bg-slate-300 dark:bg-slate-600" />
+              <div className="skeleton-shimmer w-9 h-9 rounded-full" style={{ animationDelay: '0.08s' }} />
             </div>
-            <div className="flex items-center gap-5">
-              <div className="w-44 h-44 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0" />
+            <div className="flex items-center gap-5 mt-4">
+              <div className="skeleton-shimmer w-44 h-44 rounded-full shrink-0" style={{ animationDelay: '0.12s' }} />
               <div className="flex-1 space-y-3">
                 <div className="grid grid-cols-3 gap-2">
-                  <div className="h-12 rounded-xl bg-slate-300 dark:bg-slate-600" />
-                  <div className="h-12 rounded-xl bg-slate-300 dark:bg-slate-600" />
-                  <div className="h-12 rounded-xl bg-slate-300 dark:bg-slate-600" />
+                  <div className="skeleton-shimmer h-12 rounded-xl" style={{ animationDelay: '0.15s' }} />
+                  <div className="skeleton-shimmer h-12 rounded-xl" style={{ animationDelay: '0.2s' }} />
+                  <div className="skeleton-shimmer h-12 rounded-xl" style={{ animationDelay: '0.25s' }} />
                 </div>
                 <div className="flex gap-2">
-                  <div className="h-6 w-16 rounded-full bg-slate-300 dark:bg-slate-600" />
-                  <div className="h-6 w-16 rounded-full bg-slate-300 dark:bg-slate-600" />
-                  <div className="h-6 w-16 rounded-full bg-slate-300 dark:bg-slate-600" />
+                  <div className="skeleton-shimmer h-6 w-16 rounded-full" style={{ animationDelay: '0.18s' }} />
+                  <div className="skeleton-shimmer h-6 w-16 rounded-full" style={{ animationDelay: '0.23s' }} />
+                  <div className="skeleton-shimmer h-6 w-16 rounded-full" style={{ animationDelay: '0.28s' }} />
                 </div>
               </div>
             </div>
@@ -385,15 +385,15 @@ export default function DashboardPage() {
       <div className="grid gap-3">
         {/* Row 1: HabitCards + Chart (Matching heights) */}
         <div className="grid gap-3 md:grid-cols-2 items-stretch">
-          <HabitCards className="h-full ios-reveal md:delay-75" date={date} initialHabits={habits} onUpdate={(newCal) => refreshTodayData(newCal)} />
-          <div className="glass-card rounded-[2rem] p-5 h-full flex flex-col ios-reveal md:delay-150">
+          <HabitCards className="h-full card-enter card-enter-1" date={date} initialHabits={habits} onUpdate={(newCal) => refreshTodayData(newCal)} />
+          <div className="glass-card rounded-[2rem] p-5 h-full flex flex-col card-enter card-enter-2">
             <div className="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-800 pb-2">
               <h3 className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">Calories 7 ngày</h3>
               <span className="text-[11px] text-slate-400 dark:text-slate-400 font-bold">Goal {calorieGoal.toLocaleString()} kcal</span>
             </div>
             <div className="flex-1 flex flex-col justify-center">
               {loadingWeekly
-                ? <div className="h-44 rounded-2xl bg-slate-50 dark:bg-slate-800 animate-pulse" />
+                ? <div className="skeleton-shimmer h-44 rounded-2xl" />
                 : weeklyCalories.length === 0
                   ? <div className="h-44 flex items-center justify-center"><p className="text-xs text-slate-400 text-center">Chưa có dữ liệu — hãy log vài bữa ăn nhé.</p></div>
                   : <WeeklyChart data={weeklyCalories} goal={calorieGoal} />}
@@ -403,7 +403,7 @@ export default function DashboardPage() {
 
         {/* Row 2: AI Assistant + QuickRelog (Matching heights) */}
         <div className="grid gap-3 md:grid-cols-2 items-stretch">
-          <div className="glass-card rounded-[2rem] p-5 flex flex-col justify-between ios-reveal md:delay-200">
+          <div className="glass-card rounded-[2rem] p-5 flex flex-col justify-between card-enter card-enter-3">
             <div>
               <div className="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-800 pb-2">
                 <p className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-300">Trợ lý AI</p>
@@ -463,7 +463,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="glass-card rounded-[2rem] p-5 ios-reveal md:delay-300">
+          <div className="glass-card rounded-[2rem] p-5 card-enter card-enter-4">
             <QuickRelog recentMeals={recentMeals} onRelog={relogHandler} />
           </div>
         </div>

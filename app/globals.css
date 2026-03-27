@@ -565,3 +565,136 @@ body {
 .ios-rubber-band {
   transition: transform 0.4s var(--ios-bounce);
 }
+
+/* ── Extra Animations ── */
+
+/* Scan beam: sweeps top→bottom on analyzing state */
+@keyframes scanBeam {
+  0%   { top: 0%; opacity: 1; }
+  80%  { top: 100%; opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+.scan-beam {
+  position: absolute;
+  left: 0; right: 0;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, oklch(0.62 0.20 155), transparent);
+  box-shadow: 0 0 12px 4px oklch(0.62 0.20 155 / 0.6);
+  animation: scanBeam 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+/* Corner brackets for scan frame */
+@keyframes scanCornerPulse {
+  0%, 100% { opacity: 0.5; }
+  50%       { opacity: 1; }
+}
+.scan-corner {
+  position: absolute;
+  width: 22px; height: 22px;
+  border-color: oklch(0.62 0.20 155);
+  border-style: solid;
+  animation: scanCornerPulse 1.6s ease-in-out infinite;
+}
+.scan-corner-tl { top: 0; left: 0;  border-width: 3px 0 0 3px; border-radius: 4px 0 0 0; }
+.scan-corner-tr { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 4px 0 0; }
+.scan-corner-bl { bottom: 0; left: 0;  border-width: 0 0 3px 3px; border-radius: 0 0 0 4px; }
+.scan-corner-br { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 4px 0; }
+
+/* Staggered card entrance */
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.card-enter {
+  animation: cardEnter 0.45s var(--ios-spring) both;
+}
+.card-enter-1 { animation-delay: 0.05s; }
+.card-enter-2 { animation-delay: 0.12s; }
+.card-enter-3 { animation-delay: 0.19s; }
+.card-enter-4 { animation-delay: 0.26s; }
+.card-enter-5 { animation-delay: 0.33s; }
+
+/* Shimmer better skeleton */
+@keyframes shimmerWave {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.92 0.01 155) 0%,
+    oklch(0.96 0.003 155) 40%,
+    oklch(0.92 0.01 155) 80%
+  );
+  background-size: 800px 100%;
+  animation: shimmerWave 1.4s ease-in-out infinite;
+  border-radius: 1rem;
+}
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    oklch(0.18 0.018 240) 0%,
+    oklch(0.24 0.022 240) 40%,
+    oklch(0.18 0.018 240) 80%
+  );
+  background-size: 800px 100%;
+}
+
+/* Spin with fade-in for AI loading */
+@keyframes spinFadeIn {
+  from { opacity: 0; transform: scale(0.7) rotate(-90deg); }
+  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+.spin-fade-in {
+  animation: spinFadeIn 0.4s var(--ios-spring) forwards;
+}
+
+/* Bounce dot loader */
+@keyframes bounceDot {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%           { transform: scale(1.1); opacity: 1; }
+}
+.bounce-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  display: inline-block;
+  animation: bounceDot 1.2s ease-in-out infinite both;
+}
+.bounce-dot:nth-child(1) { animation-delay: -0.32s; }
+.bounce-dot:nth-child(2) { animation-delay: -0.16s; }
+.bounce-dot:nth-child(3) { animation-delay: 0s; }
+
+/* Ripple on button tap */
+@keyframes ripple {
+  to { transform: scale(4); opacity: 0; }
+}
+.ripple-container { position: relative; overflow: hidden; }
+.ripple-container .ripple-effect {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  transform: scale(0);
+  animation: ripple 0.5s linear;
+  pointer-events: none;
+}
+
+/* Floating animation for icons/badges */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+.float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Success checkmark pop */
+@keyframes checkPop {
+  0%   { transform: scale(0) rotate(-45deg); opacity: 0; }
+  60%  { transform: scale(1.2) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.check-pop {
+  animation: checkPop 0.5s var(--ios-spring) forwards;
+}
